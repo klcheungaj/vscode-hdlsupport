@@ -162,17 +162,15 @@ interface WindowsProcessTree {
     readonly descendants: number[];
 }
 
-async function readWindowsProcessTree(
-    pid: number,
-    timeoutMs: number,
-    onWarning: ((message: string) => void) | undefined,
-): Promise<WindowsProcessTree> {
-    // PowerShell/CIM is present on supported Windows runners and lets us
-    // retain descendant PIDs even if the root exits before taskkill starts.
-    // Arguments are passed directly to powershell.exe; no shell interpolation
-    // occurs for workspace paths or PIDs.
-    const script = [
-        '$root = [int]$args[0]',
+/**
+ * PowerShell script that prints every descendant PID of `pid`. `-Command` does
+ * not expose trailing arguments as `$args` (the root would silently become 0
+ * and list the System processes), so the PID, a validated positive integer, is
+ * written into the script itself.
+ */
+export function windowsProcessTreeScript(pid: number): string {
+    return [
+        `$root = ${pid}`,
         '$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Select-Object ProcessId, ParentProcessId)',
         '$pending = New-Object System.Collections.ArrayList',
         '[void]$pending.Add($root)',
@@ -191,13 +189,22 @@ async function readWindowsProcessTree(
         '  }',
         '}',
     ].join(';');
+}
+
+async function readWindowsProcessTree(
+    pid: number,
+    timeoutMs: number,
+    onWarning: ((message: string) => void) | undefined,
+): Promise<WindowsProcessTree> {
+    // PowerShell/CIM is present on supported Windows runners and lets us
+    // retain descendant PIDs even if the root exits before taskkill starts.
+    const script = windowsProcessTreeScript(pid);
     try {
         const result = await execFileAsync('powershell.exe', [
             '-NoProfile',
             '-NonInteractive',
             '-Command',
             script,
-            String(pid),
         ], {
             windowsHide: true,
             timeout: timeoutMs,

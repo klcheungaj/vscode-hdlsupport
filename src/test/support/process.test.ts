@@ -11,6 +11,7 @@ import {
     readRecordedPids,
     terminateProcessTree,
     terminateRecordedProcesses,
+    windowsProcessTreeScript,
 } from './process';
 
 const children: ChildProcess[] = [];
@@ -122,6 +123,15 @@ describe('process cleanup helpers', () => {
         // Assert
         expect(failures).toEqual([]);
         expect(isProcessAlive(child.pid as number)).toBe(false);
+    });
+
+    it('writes the root PID into the Windows tree script instead of relying on $args', () => {
+        // `powershell -Command <script> <pid>` leaves $args empty, which made the root 0
+        // and listed the System processes as descendants.
+        const script = windowsProcessTreeScript(4242);
+
+        expect(script).toContain('$root = 4242;');
+        expect(script).not.toContain('$args');
     });
 
     it('returns the current PID first and historical launch PIDs newest first', () => {
