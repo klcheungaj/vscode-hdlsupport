@@ -189,6 +189,14 @@ export async function run(): Promise<void> {
         fs.mkdirSync(controlDir, { recursive: true });
         fs.writeFileSync(path.join(controlDir, 'mode'), 'normal');
 
+        // Recent VS Code builds open a Chat view whose input box is a code
+        // editor; when it keeps focus, editor commands such as commentLine and
+        // default:type act on it instead of the test document.
+        fs.mkdirSync(path.join(userDataDir, 'User'), { recursive: true });
+        fs.writeFileSync(
+            path.join(userDataDir, 'User', 'settings.json'),
+            `${JSON.stringify({ 'chat.disableAIFeatures': true }, null, 2)}\n`,
+        );
         fs.mkdirSync(path.join(fixture.projectDir, '.vscode'), { recursive: true });
         fs.writeFileSync(
             path.join(fixture.projectDir, '.vscode', 'settings.json'),

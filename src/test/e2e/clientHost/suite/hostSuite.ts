@@ -235,17 +235,6 @@ function snapshotModuleLocation(snapshot: Record<string, unknown>, moduleName: s
     return sourceLocation(module, `fake module ${moduleName}`);
 }
 
-/**
- * Shows `document` in an editor that receives editor commands. Commands such
- * as `editor.action.commentLine` and `default:type` target the focused code
- * editor first, and recent VS Code builds open the Chat view in the secondary
- * side bar, whose input box is a code editor that can keep that focus.
- */
-async function showEditorForCommands(document: vscode.TextDocument): Promise<vscode.TextEditor> {
-    await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
-    return vscode.window.showTextDocument(document);
-}
-
 function assertActiveEditorAt(location: SourceLocation): void {
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, 'provider navigation did not leave an active text editor');
@@ -764,7 +753,7 @@ describe('hdlsupport llg client host', () => {
             const uri = vscode.Uri.file(path.join(folder.uri.fsPath, `editor-profile.${extension}`));
             await vscode.workspace.fs.writeFile(uri, Buffer.from('set value 1\n'));
             const document = await vscode.workspace.openTextDocument(uri);
-            const editor = await showEditorForCommands(document);
+            const editor = await vscode.window.showTextDocument(document);
 
             assert.strictEqual(document.languageId, languageId);
             editor.selection = new vscode.Selection(0, 0, 0, 0);
@@ -791,7 +780,7 @@ describe('hdlsupport llg client host', () => {
         const uri = vscode.Uri.file(path.join(folder.uri.fsPath, 'braced-body.tcl'));
         await vscode.workspace.fs.writeFile(uri, Buffer.from('proc p {} {\n    \n}\n'));
         const document = await vscode.workspace.openTextDocument(uri);
-        const editor = await showEditorForCommands(document);
+        const editor = await vscode.window.showTextDocument(document);
 
         // Braced script bodies are strings in the grammar, as in Softbrush, but
         // their `string.braced` token type keeps brackets auto-closing inside them.
