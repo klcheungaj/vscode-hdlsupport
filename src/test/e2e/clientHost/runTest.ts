@@ -8,6 +8,7 @@ import { runTests, type TestOptions } from '@vscode/test-electron';
 import { createWorkspaceFixture } from '../fixtures/workspace';
 import { persistDiagnosticDirectory, persistDiagnosticFiles } from '../../support/artifacts';
 import { requireDisplayForGuiTest } from '../../support/display';
+import { VSCODE_DOWNLOAD_TIMEOUT_MS } from '../../support/vscodeDownload';
 import { terminateProcessTree, terminateRecordedProcesses } from '../../support/process';
 
 // Keep the pure display policy available from its historical client-host test
@@ -52,6 +53,7 @@ function hostTestOptions(baseDir: string, projectDir: string): TestOptions {
 
     return {
         version: process.env.HDLSUPPORT_E2E_VSCODE_VERSION?.trim() || 'stable',
+        timeout: VSCODE_DOWNLOAD_TIMEOUT_MS,
         ...(configuredExecutable === undefined || configuredExecutable === ''
             ? {}
             : { vscodeExecutablePath: path.resolve(configuredExecutable) }),

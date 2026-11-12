@@ -8,6 +8,7 @@ import { runTests, type TestOptions } from '@vscode/test-electron';
 
 import { persistDiagnosticDirectory } from '../../../support/artifacts';
 import { requireDisplayForGuiTest } from '../../../support/display';
+import { VSCODE_DOWNLOAD_TIMEOUT_MS } from '../../../support/vscodeDownload';
 import { terminateProcessTree } from '../../../support/process';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
@@ -48,6 +49,7 @@ function hostOptions(
     }
     return {
         version: process.env.HDLSUPPORT_E2E_VSCODE_VERSION?.trim() || 'stable',
+        timeout: VSCODE_DOWNLOAD_TIMEOUT_MS,
         ...(configuredExecutable ? { vscodeExecutablePath: path.resolve(configuredExecutable) } : {}),
         ...(configuredCache ? { cachePath: path.resolve(configuredCache) } : {}),
         extensionDevelopmentPath: REPO_ROOT,

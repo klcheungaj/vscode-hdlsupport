@@ -22,6 +22,7 @@ import {
     persistDiagnosticText,
 } from '../../support/artifacts';
 import { requireDisplayForGuiTest } from '../../support/display';
+import { VSCODE_DOWNLOAD_TIMEOUT_MS } from '../../support/vscodeDownload';
 import { terminateProcessTree, terminateRecordedProcesses } from '../../support/process';
 
 const REPO_ROOT = findRepoRoot(__dirname);
@@ -253,6 +254,7 @@ function vscodeExecutablePath(): Promise<string> {
     return downloadAndUnzipVSCode({
         version,
         cachePath,
+        timeout: VSCODE_DOWNLOAD_TIMEOUT_MS,
     });
 }
 
