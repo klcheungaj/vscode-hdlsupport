@@ -2,6 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('vscode', () => {
+    // The source resolves with `path`, which adds a drive letter and backslashes on Windows.
+    const posix = (fsPath: string): string => fsPath.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/');
     class Uri {
         private constructor(readonly fsPath: string) {}
 
@@ -55,13 +57,13 @@ vi.mock('vscode', () => {
             findFiles: vi.fn(async () => state.fallback),
             fs: {
                 stat: vi.fn(async (uri: Uri) => {
-                    if (!state.files.has(uri.fsPath)) {
+                    if (!state.files.has(posix(uri.fsPath))) {
                         throw new Error('not found');
                     }
                     return { type: 1 };
                 }),
                 readFile: vi.fn(async (uri: Uri) => {
-                    if (uri.fsPath !== '/workspace/llg.toml' && uri.fsPath !== state.configPath) {
+                    if (posix(uri.fsPath) !== '/workspace/llg.toml' && posix(uri.fsPath) !== state.configPath) {
                         throw new Error('not found');
                     }
                     return Buffer.from(state.configText);
@@ -83,6 +85,7 @@ interface LinkState {
 }
 
 const state = (vscode as typeof vscode & { __test: LinkState }).__test;
+const posix = (fsPath: string | undefined): string | undefined => fsPath?.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/');
 
 function document(source: string, file = '/workspace/rtl/top.sv'): vscode.TextDocument {
     return {
@@ -111,7 +114,7 @@ describe('literal include document links', () => {
 
         expect(links).toHaveLength(1);
         expect(source.slice((links[0].range.start as any).character, (links[0].range.end as any).character)).toBe('defs.svh');
-        expect(resolved?.target?.fsPath).toBe('/workspace/rtl/defs.svh');
+        expect(posix(resolved?.target?.fsPath)).toBe('/workspace/rtl/defs.svh');
     });
 
     it('resolves through multiline llg.toml source and include directories', async () => {
@@ -122,7 +125,7 @@ describe('literal include document links', () => {
         const links = await state.provider?.provideDocumentLinks(doc, {} as vscode.CancellationToken) ?? [];
         const resolved = await state.provider?.resolveDocumentLink?.(links[0], {} as vscode.CancellationToken);
 
-        expect(resolved?.target?.fsPath).toBe('/workspace/include/common.svh');
+        expect(posix(resolved?.target?.fsPath)).toBe('/workspace/include/common.svh');
     });
 
     it('honors an absolute configuration override and leaves ambiguous fallback matches unresolved', async () => {

@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { describe, expect, it } from 'vitest';
 import { buildInitializationOptions, WorkspaceFolderInfo } from '../../languageServer/initOptions';
 
@@ -6,14 +7,15 @@ const noOverride = () => '';
 
 describe('buildInitializationOptions', () => {
     it('defaults to <root>/llg.toml when the override is unset', () => {
-        const options = buildInitializationOptions([{ uri: '/ws/project-a', name: 'project-a' }], noOverride);
+        const folder = path.resolve('/ws/project-a');
+        const options = buildInitializationOptions([{ uri: folder, name: 'project-a' }], noOverride);
         expect(options).toEqual({
             llg: {
                 protocolVersion: 1,
                 configFiles: [
                     {
-                        workspaceUri: 'file:///ws/project-a',
-                        path: path.resolve('/ws/project-a', 'llg.toml'),
+                        workspaceUri: pathToFileURL(folder).href,
+                        path: path.join(folder, 'llg.toml'),
                     },
                 ],
             },
@@ -37,23 +39,25 @@ describe('buildInitializationOptions', () => {
     });
 
     it('emits one entry per folder in input order', () => {
+        const beta = path.resolve('/ws/beta');
+        const alpha = path.resolve('/ws/alpha');
         const folders: WorkspaceFolderInfo[] = [
-            { uri: '/ws/beta', name: 'beta' },
-            { uri: '/ws/alpha', name: 'alpha' },
+            { uri: beta, name: 'beta' },
+            { uri: alpha, name: 'alpha' },
         ];
         const overrides: Record<string, string> = {
-            '/ws/beta': 'other.toml',
-            '/ws/alpha': '',
+            [beta]: 'other.toml',
+            [alpha]: '',
         };
         const options = buildInitializationOptions(folders, (folderUri) => overrides[folderUri] ?? '');
         expect(options.llg.protocolVersion).toBe(1);
         expect(options.llg.configFiles.map((entry) => entry.workspaceUri)).toEqual([
-            'file:///ws/beta',
-            'file:///ws/alpha',
+            pathToFileURL(beta).href,
+            pathToFileURL(alpha).href,
         ]);
         expect(options.llg.configFiles.map((entry) => entry.path)).toEqual([
-            path.resolve('/ws/beta', 'other.toml'),
-            path.resolve('/ws/alpha', 'llg.toml'),
+            path.resolve(beta, 'other.toml'),
+            path.resolve(alpha, 'llg.toml'),
         ]);
     });
 

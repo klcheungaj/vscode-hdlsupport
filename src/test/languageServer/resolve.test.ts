@@ -233,8 +233,10 @@ describe('resolveOnPath', () => {
         );
         expect(resolved).toBeNull();
 
-        const plain = resolveOnPath('plain-file', secondDir);
-        expect(plain).toBeNull();
+        // Windows has no execute bit, so a plain file there counts as executable.
+        if (process.platform !== 'win32') {
+            expect(resolveOnPath('plain-file', secondDir)).toBeNull();
+        }
     });
 
     it('returns null when no entry matches', () => {
@@ -276,7 +278,7 @@ describe('validateExecutable', () => {
         expect(error).toContain('not a regular file');
     });
 
-    it('rejects a file without execute permission', async () => {
+    it.skipIf(process.platform === 'win32')('rejects a file without execute permission', async () => {
         const file = path.join(tempRoot, 'no-exec-bit');
         await writeFile(file, 'data');
         await chmod(file, 0o644);

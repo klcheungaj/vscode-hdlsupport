@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('vscode', () => {
@@ -309,10 +310,12 @@ describe('nested llg.toml roots', () => {
             workspaceFolders: Array<{ uri: { fsPath: string }; name: string }>;
             findFiles: Mock;
         };
-        workspace.workspaceFolders = [{ uri: { fsPath: '/ws' }, name: 'ws' }];
+        const root = path.resolve('/ws');
+        const core = path.join(root, 'ip', 'core');
+        workspace.workspaceFolders = [{ uri: { fsPath: root }, name: 'ws' }];
         workspace.findFiles.mockResolvedValueOnce([
-            { fsPath: '/ws/llg.toml' },
-            { fsPath: '/ws/ip/core/llg.toml' },
+            { fsPath: path.join(root, 'llg.toml') },
+            { fsPath: path.join(core, 'llg.toml') },
         ]);
         try {
             const manager = createLlgClientManager(context());
@@ -322,14 +325,14 @@ describe('nested llg.toml roots', () => {
                 fillInitializeParams(params: { workspaceFolders?: Array<{ uri: string; name: string }> | null }): void;
             };
             expect(client.options.initializationOptions.llg.configFiles).toEqual([
-                { workspaceUri: 'file:///ws', path: path.join('/ws', 'llg.toml') },
-                { workspaceUri: 'file:///ws/ip/core', path: path.join('/ws/ip/core', 'llg.toml') },
+                { workspaceUri: pathToFileURL(root).href, path: path.join(root, 'llg.toml') },
+                { workspaceUri: pathToFileURL(core).href, path: path.join(core, 'llg.toml') },
             ]);
             const params: { workspaceFolders?: Array<{ uri: string; name: string }> | null } = {};
             client.fillInitializeParams(params);
             expect(params.workspaceFolders).toEqual([
                 { uri: 'file:///ws', name: 'ws' },
-                { uri: 'file:///ws/ip/core', name: 'core' },
+                { uri: vscode.Uri.file(core).toString(), name: 'core' },
             ]);
             await manager.dispose();
         } finally {

@@ -25,7 +25,7 @@ describe('canOfferTemplateCreation', () => {
     });
 
     it('offers creation for a relative override that resolves onto the root-local default', () => {
-        const folder = '/ws/project-a';
+        const folder = path.resolve('/ws/project-a');
         expect(canOfferTemplateCreation(effectiveConfigPath(folder, './llg.toml'), folder)).toBe(true);
     });
 
