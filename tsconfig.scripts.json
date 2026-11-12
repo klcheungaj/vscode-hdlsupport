@@ -1,0 +1,16 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": ".",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"types": ["node"]
+	},
+	"include": [
+		"scripts/**/*.ts",
+		"vite.config.ts",
+		"vitest*.config.ts",
+		"src/test/e2e/playwright/playwright.config.ts"
+	]
+}

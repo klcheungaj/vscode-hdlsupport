@@ -1,0 +1,19 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": ".",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"types": ["node", "@playwright/test"]
+	},
+	"include": [
+		"src/test/e2e/playwright/**/*.ts",
+		"src/test/gui/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		".vscode-test",
+		"out"
+	]
+}

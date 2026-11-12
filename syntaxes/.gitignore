@@ -1,0 +1,7 @@
+*.json
+!sv-language-configuration.json
+!tcl.tmLanguage.json
+!tcl-language-configuration.json
+!vhdl-language-configuration.json
+!sdc.tmLanguage.json
+!xdc.tmLanguage.json

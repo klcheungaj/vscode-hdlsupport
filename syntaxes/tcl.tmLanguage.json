@@ -1,0 +1,428 @@
+{
+  "name": "Tcl",
+  "scopeName": "source.tcl",
+  "comment": "Base grammar for Tcl, SDC and XDC. It mirrors Softbrush (softbrush_ls) semantic tokens: each colored token uses the scope VS Code falls back to for the semantic token type (keyword -> keyword.control, function -> entity.name.function, ...), and text Softbrush leaves unclassified gets no colored scope. source.sdc and source.xdc include this grammar and recolor options and braces through an injection into meta.command.tcl.",
+  "fileTypes": [
+    "tcl"
+  ],
+  "firstLineMatch": "^#!.*\\b(?:tclsh|wish)(?:[0-9.]*)?\\b",
+  "patterns": [
+    {
+      "include": "#script"
+    }
+  ],
+  "repository": {
+    "script": {
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#procedure"
+        },
+        {
+          "include": "#set"
+        },
+        {
+          "include": "#variableDeclaration"
+        },
+        {
+          "include": "#namespaceEval"
+        },
+        {
+          "include": "#objectDeclaration"
+        },
+        {
+          "include": "#clockDeclaration"
+        },
+        {
+          "include": "#clockTargetDeclaration"
+        },
+        {
+          "include": "#command"
+        }
+      ]
+    },
+    "comment": {
+      "match": "#.*$",
+      "name": "comment.tcl"
+    },
+    "command": {
+      "comment": "The command name is matched by `begin`, outside `meta.command.tcl`, so the SDC/XDC injection never sees it.",
+      "name": "meta.command.tcl",
+      "begin": "(?:((?:break|catch|continue|error|eval|expr|for|foreach|if|namespace|proc|return|switch|tailcall|throw|try|uplevel|while))|([^\\s;\\]\\[$\\\\\"{}][^\\s;\\]\\[$\\\\]*))(?=[\\s;\\]]|$)|(?=[^\\s;\\]}])",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.tcl"
+        },
+        "2": {
+          "name": "entity.name.function.tcl"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "procedure": {
+      "name": "meta.command.tcl",
+      "begin": "(proc)[ \\t]+((?:\\{[^{}\\n]*\\}|\"[^\"\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[]*))(?=[\\s;\\]]|$)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.tcl"
+        },
+        "2": {
+          "name": "entity.name.function.tcl"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "include": "#parameterList"
+        },
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "parameterList": {
+      "comment": "meta.parameters keeps the SDC/XDC injection out of parameter lists.",
+      "begin": "\\G[ \\t]+(\\{)",
+      "beginCaptures": {
+        "1": {}
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {}
+      },
+      "contentName": "meta.parameters.tcl",
+      "patterns": [
+        {
+          "begin": "(\\{)[ \\t]*((?:[^\\s{}\\\\]|\\\\.)+)?",
+          "beginCaptures": {
+            "1": {},
+            "2": {
+              "name": "variable.parameter.tcl"
+            }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": {}
+          },
+          "patterns": [
+            {
+              "include": "#plainBraces"
+            }
+          ]
+        },
+        {
+          "match": "(?:[^\\s{}\\\\]|\\\\.)+",
+          "name": "variable.parameter.tcl"
+        }
+      ]
+    },
+    "plainBraces": {
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": {}
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {}
+      },
+      "patterns": [
+        {
+          "match": "\\\\."
+        },
+        {
+          "include": "#plainBraces"
+        }
+      ]
+    },
+    "set": {
+      "name": "meta.command.tcl",
+      "begin": "(set)[ \\t]+((?:\\{[^{}\\n]*\\}|\"[^\"\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[]*))(?=[ \\t]+[^\\s;\\]])",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.tcl"
+        },
+        "2": {
+          "name": "variable.other.readwrite.tcl"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "variableDeclaration": {
+      "name": "meta.command.tcl",
+      "begin": "(variable)[ \\t]+((?:\\{[^{}\\n]*\\}|\"[^\"\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[]*))(?=[\\s;\\]]|$)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.tcl"
+        },
+        "2": {
+          "name": "variable.other.readwrite.tcl"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "namespaceEval": {
+      "name": "meta.command.tcl",
+      "begin": "(namespace)[ \\t]+(eval)[ \\t]+((?:\\{[^{}\\n]*\\}|\"[^\"\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[]*))(?=[\\s;\\]]|$)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.tcl"
+        },
+        "2": {},
+        "3": {
+          "name": "entity.name.namespace.tcl"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "objectDeclaration": {
+      "name": "meta.command.tcl",
+      "begin": "(create_pblock|create_macro|create_debug_core)[ \\t]+((?:\\{[^{}\\n]*\\}|\"[^\"\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[]*))(?=[\\s;\\]]|$)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.tcl"
+        },
+        "2": {
+          "name": "variable.other.readwrite.tcl"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "clockDeclaration": {
+      "comment": "`create_clock -name NAME` declares the clock NAME. Only the name is scoped here: options and delimiters fall through to `#arguments`, so SDC/XDC recolor them like any other option or brace.",
+      "name": "meta.command.tcl",
+      "begin": "(create_clock|create_generated_clock)(?=[\\s;\\]]|$)(?=.*[ \\t]-name[ \\t])",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.tcl"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "match": "(?<=-name)[ \\t]+\\{[ \\t]*([^\\s{}\"\\\\\\-](?:[^{}\\\\\\n]*?[^\\s{}\"\\\\\\-])?)[ \\t]*\\}",
+          "captures": {
+            "1": {
+              "name": "variable.other.readwrite.tcl"
+            }
+          }
+        },
+        {
+          "match": "(?<=-name)[ \\t]+\"[ \\t]*([^\\s{}\"\\\\\\-](?:[^\"$\\[\\\\\\n]*?[^\\s{}\"\\\\\\-])?)[ \\t]*\"",
+          "captures": {
+            "1": {
+              "name": "variable.other.readwrite.tcl"
+            }
+          }
+        },
+        {
+          "match": "(?<=-name)[ \\t]+([^\\s{}\"\\\\\\-][^\\s;\\]\\[$\\\\\"{}]*)(?=[\\s;\\]]|$)",
+          "captures": {
+            "1": {
+              "name": "variable.other.readwrite.tcl"
+            }
+          }
+        },
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "clockTargetDeclaration": {
+      "comment": "Without `-name`, the clock is named after its single exact port or pin target, unless an option of unknown arity hides which word that is (softbrush `trailing_clock_target`).",
+      "name": "meta.command.tcl",
+      "begin": "(create_clock|create_generated_clock)(?=[\\s;\\]]|$)(?!(?:\\{[^{}\\n]*\\}|[^{\\n])*?[ \\t]-(?!(?:period|waveform|source|edges|divide_by|multiply_by|duty_cycle|edge_shift|master_clock|add|quiet|verbose|combinational|invert)(?=[\\s;\\]]|$)))",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.tcl"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "comment": "An option value is never the target.",
+          "match": "(?<=-period|-waveform|-source|-edges|-divide_by|-multiply_by|-duty_cycle|-edge_shift)[ \\t]+(\\[[^\\[\\]\\n]*\\]|\\{(?:[^{}\\\\\\n]|\\\\.)*\\}|\"(?:[^\"\\\\\\n]|\\\\.)*\"|[^\\s;\\]\\[{\"][^\\s;\\]]*)",
+          "captures": {
+            "1": {
+              "patterns": [
+                {
+                  "include": "#arguments"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\[[ \\t]*(get_ports|get_pins)[ \\t]+(?:\\{[ \\t]*([^\\s;\\]\\[$\\\\\"{}*?\\-](?:[^\\s{}\\\\*?\\[\\]]*[^\\s;\\]\\[$\\\\\"{}*?\\-])?)[ \\t]*\\}|\"[ \\t]*([^\\s;\\]\\[$\\\\\"{}*?\\-](?:[^\\s\"$\\\\*?\\[\\]]*[^\\s;\\]\\[$\\\\\"{}*?\\-])?)[ \\t]*\"|([^\\s;\\]\\[$\\\\\"{}*?\\-][^\\s;\\]\\[$\\\\\"{}*?]*))[ \\t]*\\](?![ \\t]+[^\\s\\-;\\]\\\\])",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.tcl"
+            },
+            "2": {
+              "name": "variable.other.readwrite.tcl"
+            },
+            "3": {
+              "name": "variable.other.readwrite.tcl"
+            },
+            "4": {
+              "name": "variable.other.readwrite.tcl"
+            }
+          }
+        },
+        {
+          "match": "[ \\t]+(?:\\{[ \\t]*([^\\s;\\]\\[$\\\\\"{}*?\\-](?:[^\\s{}\\\\*?\\[\\]]*[^\\s;\\]\\[$\\\\\"{}*?\\-])?)[ \\t]*\\}|\"[ \\t]*([^\\s;\\]\\[$\\\\\"{}*?\\-](?:[^\\s\"$\\\\*?\\[\\]]*[^\\s;\\]\\[$\\\\\"{}*?\\-])?)[ \\t]*\")(?![ \\t]+[^\\s\\-;\\]\\\\])",
+          "captures": {
+            "1": {
+              "name": "variable.other.readwrite.tcl"
+            },
+            "2": {
+              "name": "variable.other.readwrite.tcl"
+            }
+          }
+        },
+        {
+          "match": "(?<![^ \\t\\f])(?![+-]?(?:(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?|(?i:inf|infinity|nan))(?=[\\s;\\]]|$))([^\\s;\\]\\[$\\\\\"{}*?\\-][^\\s;\\]\\[$\\\\*?]*)(?=[\\s;\\]]|$)(?![ \\t]+[^\\s\\-;\\]\\\\])",
+          "captures": {
+            "1": {
+              "name": "variable.other.readwrite.tcl"
+            }
+          }
+        },
+        {
+          "include": "#arguments"
+        }
+      ]
+    },
+    "arguments": {
+      "patterns": [
+        {
+          "match": "\\\\$"
+        },
+        {
+          "include": "#bracedWord"
+        },
+        {
+          "include": "#quotedWord"
+        },
+        {
+          "match": "(?<![^ \\t\\f])[+-]?(?:(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?|(?i:inf|infinity|nan))(?=[\\s;\\]]|$)",
+          "name": "constant.numeric.tcl"
+        },
+        {
+          "match": "(?<![^ \\t\\f])-[^\\s;\\]\\[$\\\\]*(?=[\\s;\\]]|$)",
+          "name": "keyword.operator.tcl"
+        },
+        {
+          "include": "#substitutions"
+        }
+      ]
+    },
+    "substitutions": {
+      "patterns": [
+        {
+          "match": "\\\\."
+        },
+        {
+          "match": "\\$(?:\\{[^}\\n]*\\}?|[A-Za-z0-9_:]+(?:\\((?:[^)\\\\\\n]|\\\\.)*\\)?)?)",
+          "name": "variable.other.readwrite.tcl"
+        },
+        {
+          "comment": "Command substitution. `$base` re-enters the root grammar, so nested scripts in SDC/XDC files get their dialect rules.",
+          "begin": "\\[",
+          "end": "\\]",
+          "patterns": [
+            {
+              "include": "$base"
+            }
+          ]
+        }
+      ]
+    },
+    "bracedWord": {
+      "comment": "Braced words are literal: Softbrush does not parse the script inside, so procedure and control-flow bodies are strings. `string.braced` is contributed as token type `other` in package.json so brackets still auto-close and match inside bodies.",
+      "begin": "(?<![^ \\t\\f;\\[}])\\{",
+      "beginCaptures": {
+        "0": {
+          "name": "string.braced.tcl"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "string.braced.tcl"
+        }
+      },
+      "contentName": "string.braced.tcl",
+      "patterns": [
+        {
+          "match": "\\\\."
+        },
+        {
+          "include": "#nestedBraces"
+        }
+      ]
+    },
+    "nestedBraces": {
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": {
+          "name": "string.braced.tcl"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "string.braced.tcl"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\\\."
+        },
+        {
+          "include": "#nestedBraces"
+        }
+      ]
+    },
+    "quotedWord": {
+      "begin": "(?<![^ \\t\\f;\\[}])\"",
+      "end": "\"",
+      "name": "string.tcl",
+      "patterns": [
+        {
+          "comment": "Literal text is consumed in runs so the SDC/XDC injection cannot match options or braces inside a quoted string.",
+          "match": "[^\"$\\[\\\\]+"
+        },
+        {
+          "include": "#substitutions"
+        }
+      ]
+    }
+  }
+}

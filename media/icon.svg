@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Final icon (GC8 artwork): pins flush to the visible chamfer start, scaled 1.3x about the centre for a larger mark. Transparent background, brighter green for dark themes. -->
+  <g transform="translate(64 64) scale(1.3) translate(-64 -64)">
+    <!-- Pins: outer pins span 41-48 and 80-87, so their corner-side edge is flush with the chamfer start; inner pins evenly spaced (pitch 13) -->
+    <g fill="none" stroke="#22c55e" stroke-width="7">
+      <path d="M44.5 18V36M57.5 18V36M70.5 18V36M83.5 18V36"/>
+      <path d="M44.5 91V110M57.5 91V110M70.5 91V110M83.5 91V110"/>
+      <path d="M18 44.5H36M18 57.5H36M18 70.5H36M18 83.5H36"/>
+      <path d="M91 44.5H110M91 57.5H110M91 70.5H110M91 83.5H110"/>
+    </g>
+
+    <!-- Chamfered package outline -->
+    <path d="M42.5 33.5H85.5L94.5 42.5V85.5L85.5 94.5H42.5L33.5 85.5V42.5Z" fill="none" stroke="#22c55e" stroke-width="7" stroke-linejoin="miter"/>
+
+    <!-- Prompt: chevron and cursor -->
+    <g fill="none" stroke="#22c55e" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M46 52L60 64L46 76"/>
+      <path d="M64 80H84"/>
+    </g>
+  </g>
+</svg>

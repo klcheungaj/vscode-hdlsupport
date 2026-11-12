@@ -1,0 +1,158 @@
+name: Continuous integration
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.12.0'
+
+jobs:
+  quality:
+    name: Quality (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - name: Verify generated grammars, snippets, and linter settings are current
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          npm run build
+          git diff --exit-code -- package.json snippets/*.json syntaxes/*.json
+
+  gui:
+    name: GUI (${{ matrix.os }}, VS Code ${{ matrix.vscode }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, vscode: '1.82.3' }
+          - { os: ubuntu-latest, vscode: stable }
+          - { os: windows-latest, vscode: '1.82.3' }
+          - { os: windows-latest, vscode: stable }
+          - { os: macos-latest, vscode: '1.82.3' }
+          - { os: macos-latest, vscode: stable }
+    env:
+      HDLSUPPORT_E2E_VSCODE_VERSION: ${{ matrix.vscode }}
+      HDLSUPPORT_E2E_DISABLE_GPU: '1'
+      HDLSUPPORT_E2E_ARTIFACT_DIR: ci-artifacts
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Cache VS Code test downloads
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .vscode-test
+          key: ${{ runner.os }}-${{ runner.arch }}-node22-vscode-${{ matrix.vscode }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-node22-vscode-${{ matrix.vscode }}-
+            ${{ runner.os }}-${{ runner.arch }}-node22-vscode-
+      - name: Install Linux GUI runtime
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk-3-0 libnss3 libgbm1 libxss1 libxshmfence1 libdrm2 libx11-xcb1 libxcb-dri3-0
+          sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
+      - run: npm ci
+      - run: npm run build
+      - name: Prepare GUI diagnostics
+        shell: bash
+        run: mkdir -p ci-artifacts
+      - name: Run Playwright GUI layer
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e:playwright; else npm run test:e2e:playwright; fi
+      - name: Run VS Code client-host GUI layer
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e:client-host; else npm run test:e2e:client-host; fi
+      - name: Collect GUI diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p ci-artifacts/playwright ci-artifacts/vscode-test ci-artifacts/logs
+          cp -a playwright-report/. ci-artifacts/playwright/ 2>/dev/null || true
+          cp -a test-results/. ci-artifacts/playwright/ 2>/dev/null || true
+          cp -a .vscode-test/. ci-artifacts/vscode-test/ 2>/dev/null || true
+      - name: Upload GUI diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gui-diagnostics-${{ matrix.os }}-${{ matrix.vscode }}
+          path: ci-artifacts
+          if-no-files-found: error
+      - name: Clean GUI downloads and reports
+        if: always()
+        shell: bash
+        run: rm -rf playwright-report test-results ci-artifacts
+
+  real-server-and-package:
+    name: Real servers, raw stdio, and package contract (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      # Servers are downloaded from pinned, checksum-verified GitHub releases
+      # by the stage scripts.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Install Linux package and real-host prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils unzip xvfb libgtk-3-0 libnss3 libgbm1 libxss1 libxshmfence1 libdrm2 libx11-xcb1 libxcb-dri3-0
+          sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
+      - run: npm run package:linux-x64
+      - run: npm run test:unit
+      - run: REQUIRE_LLG=1 REQUIRE_SOFTBRUSH=1 npm run test:contract
+      - run: npm run test:package
+      - name: Verify real llg diagnostics in VS Code
+        env:
+          HDLSUPPORT_E2E_DISABLE_GPU: '1'
+        run: xvfb-run -a npm run test:e2e:real-server-host
+      - name: Verify real Softbrush diagnostics in VS Code
+        env:
+          HDLSUPPORT_E2E_DISABLE_GPU: '1'
+        run: xvfb-run -a npm run test:e2e:softbrush-host
+
+      - name: Create package checksum
+        run: sha256sum hdl-support-linux-x64.vsix > hdl-support-linux-x64.vsix.sha256
+      - name: Upload Linux contract artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux-package-contract
+          path: |
+            hdl-support-linux-x64.vsix
+            hdl-support-linux-x64.vsix.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

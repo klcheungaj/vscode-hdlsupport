@@ -1,0 +1,668 @@
+{
+  "name": "hdl-support",
+  "displayName": "HDL-Support",
+  "description": "Language support for Verilog, SystemVerilog, VHDL, Tcl, SDC and XDC",
+  "version": "0.2.0",
+  "publisher": "klcheungaj",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Snippets",
+    "Formatters",
+    "Other"
+  ],
+  "license": "GPLv3",
+  "preview": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/klcheungaj/vscode-hdlsupport.git"
+  },
+  "keywords": [
+    "verilog",
+    "systemverilog",
+    "hdl",
+    "language-server",
+    "fpga",
+    "tcl",
+    "sdc",
+    "xdc"
+  ],
+  "activationEvents": [
+    "onLanguage:verilog",
+    "onLanguage:systemverilog",
+    "workspaceContains:llg.toml",
+    "onLanguage:tcl",
+    "onLanguage:sdc",
+    "onLanguage:xdc"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "systemverilog",
+        "aliases": [
+          "SystemVerilog",
+          "systemverilog",
+          "Systemserilog",
+          "System Verilog"
+        ],
+        "extensions": [
+          ".sv",
+          ".svh"
+        ],
+        "configuration": "./syntaxes/sv-language-configuration.json"
+      },
+      {
+        "id": "verilog",
+        "aliases": [
+          "Verilog",
+          "verilog"
+        ],
+        "extensions": [
+          ".v",
+          ".vh",
+          ".veo"
+        ],
+        "configuration": "./syntaxes/sv-language-configuration.json"
+      },
+      {
+        "id": "vhdl",
+        "aliases": [
+          "VHDL",
+          "vhdl"
+        ],
+        "extensions": [
+          ".vhd",
+          ".vhdl",
+          ".vho"
+        ],
+        "configuration": "./syntaxes/vhdl-language-configuration.json"
+      },
+      {
+        "id": "sdc",
+        "aliases": [
+          "SDC",
+          "sdc"
+        ],
+        "extensions": [
+          ".sdc"
+        ],
+        "configuration": "./syntaxes/tcl-language-configuration.json"
+      },
+      {
+        "id": "tcl",
+        "aliases": [
+          "Tcl",
+          "tcl",
+          "Tickle"
+        ],
+        "extensions": [
+          ".tcl"
+        ],
+        "configuration": "./syntaxes/tcl-language-configuration.json"
+      },
+      {
+        "id": "xdc",
+        "aliases": [
+          "XDC",
+          "xdc"
+        ],
+        "extensions": [
+          ".xdc"
+        ],
+        "configuration": "./syntaxes/tcl-language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "systemverilog",
+        "scopeName": "source.systemverilog",
+        "path": "./syntaxes/systemverilog.tmLanguage.json"
+      },
+      {
+        "language": "verilog",
+        "scopeName": "source.systemverilog",
+        "path": "./syntaxes/systemverilog.tmLanguage.json"
+      },
+      {
+        "language": "vhdl",
+        "scopeName": "source.vhdl",
+        "path": "./syntaxes/vhdl.tmLanguage.json"
+      },
+      {
+        "language": "sdc",
+        "scopeName": "source.sdc",
+        "path": "./syntaxes/sdc.tmLanguage.json",
+        "tokenTypes": {
+          "string.braced": "other"
+        }
+      },
+      {
+        "language": "tcl",
+        "scopeName": "source.tcl",
+        "path": "./syntaxes/tcl.tmLanguage.json",
+        "tokenTypes": {
+          "string.braced": "other"
+        }
+      },
+      {
+        "language": "xdc",
+        "scopeName": "source.xdc",
+        "path": "./syntaxes/xdc.tmLanguage.json",
+        "tokenTypes": {
+          "string.braced": "other"
+        }
+      }
+    ],
+    "semanticTokenModifiers": [
+      {
+        "id": "controlFlow",
+        "description": "SystemVerilog control-flow keywords."
+      },
+      {
+        "id": "typeDefinition",
+        "description": "SystemVerilog type-definition keywords."
+      },
+      {
+        "id": "direction",
+        "description": "SystemVerilog port directions."
+      },
+      {
+        "id": "primitive",
+        "description": "SystemVerilog built-in type and declaration keywords."
+      },
+      {
+        "id": "connectionLabel",
+        "description": "Named port and parameter connection labels (sent on function tokens)."
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "systemverilog",
+        "scopes": {
+          "keyword": [
+            "keyword.other.systemverilog"
+          ],
+          "keyword.controlFlow": [
+            "keyword.control.systemverilog"
+          ],
+          "macro": [
+            "keyword.control.systemverilog"
+          ],
+          "keyword.typeDefinition": [
+            "storage.type.systemverilog"
+          ],
+          "keyword.direction": [
+            "storage.modifier.systemverilog"
+          ],
+          "keyword.primitive": [
+            "storage.type.systemverilog"
+          ]
+        }
+      },
+      {
+        "language": "verilog",
+        "scopes": {
+          "keyword": [
+            "keyword.other.verilog"
+          ],
+          "keyword.controlFlow": [
+            "keyword.control.verilog"
+          ],
+          "macro": [
+            "keyword.control.verilog"
+          ],
+          "keyword.typeDefinition": [
+            "storage.type.verilog"
+          ],
+          "keyword.direction": [
+            "storage.modifier.verilog"
+          ],
+          "keyword.primitive": [
+            "storage.type.verilog"
+          ]
+        }
+      }
+    ],
+    "snippets": [
+      {
+        "language": "systemverilog",
+        "path": "./snippets/systemverilog.json"
+      },
+      {
+        "language": "verilog",
+        "path": "./snippets/systemverilog.json"
+      },
+      {
+        "language": "vhdl",
+        "path": "./snippets/vhdl.json"
+      },
+      {
+        "language": "sdc",
+        "path": "./snippets/sdc.json"
+      },
+      {
+        "language": "xdc",
+        "path": "./snippets/sdc.json"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hdlsupport-explorer",
+          "title": "HDL Modules",
+          "icon": "media/hdl-modules.svg"
+        }
+      ]
+    },
+    "views": {
+      "hdlsupport-explorer": [
+        {
+          "id": "moduleHierarchy",
+          "name": "Module Hierarchy"
+        },
+        {
+          "id": "moduleContents",
+          "name": "Module Contents"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "verilog.lint",
+        "title": "Rerun Lint Tool",
+        "category": "HDL Support"
+      },
+      {
+        "command": "verilog.instantiateModule",
+        "title": "Instantiate Module",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.templates.generate",
+        "title": "Generate Template",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.convertTabsToSpaces",
+        "title": "Convert Tabs to Spaces",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.convertSpacesToTabs",
+        "title": "Convert Spaces to Tabs",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.alignCursors",
+        "title": "Align Cursors",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.llg.restart",
+        "title": "[Lapligence] Restart Language Server",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.llg.openConfig",
+        "title": "[Lapligence] Open Configuration (llg.toml)",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.llg.showOutput",
+        "title": "[Lapligence] Show Output",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.llg.dumpTokens",
+        "title": "[Lapligence] Dump Tokens of Opened File",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.modules.refresh",
+        "title": "Refresh HDL Modules",
+        "category": "HDL Support",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "hdlsupport.softbrush.restart",
+        "title": "[Softbrush] Restart Language Server",
+        "category": "HDL Support"
+      },
+      {
+        "command": "hdlsupport.softbrush.showOutput",
+        "title": "[Softbrush] Show Output",
+        "category": "HDL Support"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "hdlsupport.alignCursors",
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "when": "editorTextFocus && editorHasMultipleSelections"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "hdlsupport.modules.refresh",
+          "when": "view == moduleHierarchy",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": [
+      {
+        "title": "HDL-Support: Lapligence Language Server",
+        "properties": {
+          "hdlsupport.llg.path": {
+            "type": "string",
+            "default": "",
+            "description": "Absolute path to the Lapligence (llg) server executable, an executable name available on PATH, or empty to use the bundled Linux x64 server."
+          },
+          "hdlsupport.llg.configPath": {
+            "scope": "resource",
+            "type": "string",
+            "default": "",
+            "description": "Path to the Lapligence (llg) configuration file (llg.toml). Empty uses <workspace-root>/llg.toml; relative paths resolve from the workspace root. Applies only to the workspace root: a closer llg.toml in a file's directory or an ancestor below the root always takes precedence."
+          },
+          "hdlsupport.llg.logLevel": {
+            "type": "string",
+            "enum": [
+              "off",
+              "error",
+              "warn",
+              "info",
+              "debug",
+              "trace"
+            ],
+            "enumDescriptions": [
+              "Disable server logging.",
+              "Log errors only.",
+              "Log errors and warnings (server default).",
+              "Log errors, warnings and informational messages.",
+              "Log debug output.",
+              "Log trace output."
+            ],
+            "default": "warn",
+            "description": "Log level for the Lapligence (llg) server, passed as LLG_LOG when starting the process ('warn' matches the server default). Changing this value restarts the server."
+          },
+          "hdlsupport.llg.trace.server": {
+            "type": "string",
+            "enum": [
+              "off",
+              "messages",
+              "verbose"
+            ],
+            "enumDescriptions": [
+              "Do not trace LSP communication.",
+              "Trace each LSP message sent between the client and the server.",
+              "Trace each LSP message with its full content."
+            ],
+            "default": "off",
+            "description": "Trace the LSP communication between VS Code and the Lapligence (llg) server ('off', 'messages' or 'verbose', following the vscode-languageclient convention)."
+          }
+        }
+      },
+      {
+        "title": "HDL-Support configuration",
+        "properties": {
+          "hdlsupport.verilog.linting.linter": {
+            "scope": "resource",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "xvlog",
+                "modelsim",
+                "verilator",
+                "slang"
+              ]
+            },
+            "uniqueItems": true,
+            "default": [],
+            "description": "Linters to run in addition to the language server diagnostics. All selected linters run. Empty runs none."
+          },
+          "hdlsupport.verilog.linting.waivedDiagnostics": {
+            "scope": "resource",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "description": "Linter diagnostics to hide, as source:code (for example verilator:unusedsignal). Add entries with the editor quick fix. Language server diagnostics are not affected."
+          },
+          "hdlsupport.verilog.linting.verilator.path": {
+            "scope": "resource",
+            "type": "string",
+            "default": "",
+            "description": "Path to the Verilator executable, or to its directory. Empty uses verilator from PATH."
+          },
+          "hdlsupport.verilog.linting.verilator.useWSL": {
+            "scope": "resource",
+            "type": "boolean",
+            "default": false,
+            "description": "Run Verilator inside WSL (Windows only)."
+          },
+          "hdlsupport.verilog.linting.verilator.arguments": {
+            "scope": "resource",
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "--lint-only",
+              "+1800-2009ext+v",
+              "+1800-2009ext+sv"
+            ],
+            "description": "Extra arguments, as an array or a string. A value replaces the defaults shown. Include directories (from llg.toml) and the file are added automatically. No shell expansion."
+          },
+          "hdlsupport.verilog.linting.xvlog.path": {
+            "scope": "resource",
+            "type": "string",
+            "default": "",
+            "description": "Path to the Vivado Logical Simulator executable, or to its directory. Empty uses xvlog from PATH."
+          },
+          "hdlsupport.verilog.linting.xvlog.arguments": {
+            "scope": "resource",
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "-nolog"
+            ],
+            "description": "Extra arguments, as an array or a string. A value replaces the defaults shown. Include directories (from llg.toml) and the file are added automatically. No shell expansion."
+          },
+          "hdlsupport.verilog.linting.modelsim.path": {
+            "scope": "resource",
+            "type": "string",
+            "default": "",
+            "description": "Path to the ModelSim / Questa executable, or to its directory. Empty uses vlog from PATH."
+          },
+          "hdlsupport.verilog.linting.modelsim.arguments": {
+            "scope": "resource",
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "-nologo"
+            ],
+            "description": "Extra arguments, as an array or a string. A value replaces the defaults shown. Include directories (from llg.toml) and the file are added automatically. No shell expansion."
+          },
+          "hdlsupport.verilog.linting.modelsim.work": {
+            "scope": "resource",
+            "type": "string",
+            "default": "work",
+            "description": "ModelSim work library."
+          },
+          "hdlsupport.verilog.linting.slang.path": {
+            "scope": "resource",
+            "type": "string",
+            "default": "",
+            "description": "Path to the Slang executable, or to its directory. Empty uses slang from PATH."
+          },
+          "hdlsupport.verilog.linting.slang.arguments": {
+            "scope": "resource",
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "description": "Extra arguments, as an array or a string. A value replaces the defaults shown. Include directories (from llg.toml) and the file are added automatically. No shell expansion."
+          },
+          "hdlsupport.verilog.linting.slang.useWSL": {
+            "scope": "resource",
+            "type": "boolean",
+            "default": false,
+            "description": "Run Slang inside WSL (Windows only)."
+          },
+          "hdlsupport.verilog.formatting.formatter": {
+            "scope": "resource",
+            "type": "string",
+            "enum": [
+              "verible",
+              "none"
+            ],
+            "default": "verible",
+            "description": "Formatter for Verilog and SystemVerilog documents. none disables formatting."
+          },
+          "hdlsupport.verilog.formatting.verible.path": {
+            "scope": "resource",
+            "type": "string",
+            "default": "",
+            "description": "Path to the Verible executable, or to its directory. Empty uses verible-verilog-format from PATH."
+          },
+          "hdlsupport.verilog.formatting.verible.arguments": {
+            "scope": "resource",
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "description": "Extra arguments, as an array or a string. A value replaces the defaults shown. Line-range and stdin flags are added automatically. No shell expansion."
+          },
+          "hdlsupport.verilog.linting.xvlog.useWSL": {
+            "scope": "resource",
+            "type": "boolean",
+            "default": false,
+            "description": "Run Vivado Logical Simulator inside WSL (Windows only)."
+          },
+          "hdlsupport.verilog.linting.modelsim.useWSL": {
+            "scope": "resource",
+            "type": "boolean",
+            "default": false,
+            "description": "Run ModelSim / Questa inside WSL (Windows only)."
+          },
+          "hdlsupport.verilog.linting.runAtFileLocation": {
+            "scope": "resource",
+            "type": "boolean",
+            "default": false,
+            "description": "Run linters in the document's directory instead of the workspace folder."
+          }
+        }
+      },
+      {
+        "title": "HDL-Support: Softbrush Tcl Language Server",
+        "properties": {
+          "hdlsupport.softbrush.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable Softbrush language features for Tcl, SDC and XDC."
+          },
+          "hdlsupport.softbrush.path": {
+            "type": "string",
+            "default": "",
+            "description": "Absolute executable path or name on PATH for softbrush_ls. Empty uses the bundled Linux x64 server."
+          },
+          "hdlsupport.softbrush.trace.server": {
+            "type": "string",
+            "enum": [
+              "off",
+              "messages",
+              "verbose"
+            ],
+            "default": "off",
+            "description": "Trace Softbrush LSP communication."
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "vite build --mode development",
+    "watch": "vite build --watch --mode development",
+    "package": "npm run typecheck && vite build --mode production",
+    "stage:server": "ts-node scripts/stage-server.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json && tsc --noEmit -p tsconfig.playwright.json",
+    "package:linux-x64": "npm run stage:server && npm run stage:softbrush && vsce package --out hdl-support-linux-x64.vsix",
+    "compile-tests": "tsc -p tsconfig.tests.json",
+    "test:e2e:client-host": "npm run compile-tests && npm run compile && node out/test/e2e/clientHost/runTest.js",
+    "test:e2e:playwright": "npm run compile-tests && npm run compile && playwright test --config src/test/e2e/playwright/playwright.config.ts",
+    "lint": "eslint src --ext ts",
+    "test": "npm run test:unit && npm run test:contract",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.config.ts",
+    "test:contract": "vitest run --config vitest.contract.config.ts",
+    "test:package": "vitest run --config vitest.package.config.ts",
+    "test:integration": "npm run test:e2e:client-host",
+    "test:e2e": "npm run test:e2e:playwright",
+    "test:gui": "npm run test:integration && npm run test:e2e",
+    "test:all": "npm run build && npm run compile && npm run test:unit && npm run test:gui",
+    "test:all:linux": "npm run build && npm run compile && npm run package:linux-x64 && npm run test:unit && REQUIRE_LLG=1 REQUIRE_SOFTBRUSH=1 npm run test:contract && npm run test:package && npm run test:e2e:real-server-host && npm run test:e2e:softbrush-host && npm run test:gui",
+    "build:snippets": "js-yaml ./snippets/vhdl.yaml > ./snippets/vhdl.json && js-yaml ./snippets/systemverilog.yaml > ./snippets/systemverilog.json && js-yaml ./snippets/sdc.yaml > ./snippets/sdc.json",
+    "build:syntax": "js-yaml ./syntaxes/systemverilog.tmLanguage.yaml > ./syntaxes/systemverilog.tmLanguage.json && js-yaml ./syntaxes/vhdl.tmLanguage.yaml > ./syntaxes/vhdl.tmLanguage.json",
+    "build": "npm run build:profiles && npm run build:snippets && npm run build:syntax",
+    "stage:softbrush": "ts-node scripts/stage-softbrush.ts",
+    "build:profiles": "ts-node scripts/sync-tool-profiles.ts",
+    "test:e2e:real-server-host": "npm run compile-tests && npm run compile && node out/test/e2e/clientHost/suite/runRealLlgHost.js",
+    "test:binaries": "vitest run --config vitest.binaries.config.ts",
+    "test:e2e:softbrush-host": "npm run compile-tests && npm run compile && node out/test/e2e/clientHost/suite/runRealSoftbrushHost.js"
+  },
+  "dependencies": {
+    "cross-spawn": "^7.0.6",
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/cross-spawn": "^6.0.6",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "^20.19.0",
+    "@types/vscode": "^1.82.0",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "~3.1.0",
+    "eslint": "^8.57.1",
+    "js-yaml": "^3.14.1",
+    "mocha": "10.7.3",
+    "ts-node": "10.9.2",
+    "typescript": "5.5.4",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
+  }
+}

@@ -1,0 +1,268 @@
+# SystemVerilog / Verilog TextMate grammar.
+#
+# A flat lexical grammar that previews llg_ls semantic tokens: every scope is
+# the one VS Code probes for the semantic token the server sends for the same
+# text (lapligence docs/semantic_tokens.md and the semanticTokenScopes in
+# package.json), so colors do not change when semantic tokens arrive.
+#
+# - keyword                 -> keyword.other       (ST-02, macro names ST-60)
+# - keyword.controlFlow     -> keyword.control     (ST-03..ST-06, ST-67)
+# - keyword.typeDefinition  -> storage.type        (ST-07)
+# - keyword.direction       -> storage.modifier    (ST-08)
+# - keyword.primitive       -> storage.type        (ST-09)
+# - class / interface / namespace / type / function / string / number /
+#   operator -> the VS Code default scope of that token type.
+#
+# Plain identifiers stay unscoped: the server leaves names it cannot resolve
+# uncolored (ST-22). Rules that share a start position are tried in order,
+# so declarations and positional keywords come before the word lists.
+name: SystemVerilog
+scopeName: source.systemverilog
+fileTypes: [v, vh, sv, svh]
+patterns:
+  - include: '#comments'
+  - include: '#strings'
+  - include: '#directives'
+  - include: '#attributes'
+  - include: '#numbers'
+  - include: '#declarations'
+  - include: '#calls'
+  - include: '#keywords'
+  - include: '#names'
+  - include: '#operators'
+repository:
+  comments:
+    patterns:
+      - begin: /\*
+        end: \*/
+        name: comment.block.systemverilog
+        patterns:
+          - include: '#todo'
+      - begin: //
+        end: $
+        name: comment.line.double-slash.systemverilog
+        patterns:
+          - include: '#todo'
+  todo:
+    patterns:
+      - match: (?i)\bfixme\b
+        name: invalid.broken.fixme.systemverilog
+      - match: (?i)\btodo\b
+        name: invalid.unimplemented.todo.systemverilog
+
+  strings:
+    # Also the `"...`" strings of a macro body. Ends at the line end so an
+    # unterminated quote does not color the rest of the file.
+    begin: '`?"'
+    end: '`?"|$'
+    name: string.quoted.double.systemverilog
+    patterns:
+      - match: \\.
+
+  directives:
+    # Every directive word is controlFlow (ST-06); macro names after it and at
+    # use sites are plain keywords (ST-60, ST-62).
+    patterns:
+      - begin: (`pragma)\s+(protect)\s+(data_block|key_block)\b
+        beginCaptures:
+          '1': { name: keyword.control.systemverilog }
+          '2': { name: keyword.other.systemverilog }
+          '3': { name: keyword.other.systemverilog }
+        end: (?=`pragma\b)
+      - begin: '`protected\b'
+        beginCaptures:
+          '0': { name: keyword.control.systemverilog }
+        end: '`endprotected\b'
+        endCaptures:
+          '0': { name: keyword.control.systemverilog }
+      - begin: '`pragma\b'
+        beginCaptures:
+          '0': { name: keyword.control.systemverilog }
+        end: $
+        patterns:
+          - include: '#strings'
+          - include: '#numbers'
+          - match: '[A-Za-z_][\w$]*'
+            name: keyword.other.systemverilog
+          - include: '#operators'
+      - match: (`(?:define|undef|ifdef|ifndef|elsif))\b(?:\s+([A-Za-z_][\w$]*))?
+        captures:
+          '1': { name: keyword.control.systemverilog }
+          '2': { name: keyword.other.systemverilog }
+      - match: (`default_nettype)\b(?:\s+([A-Za-z_]\w*))?
+        captures:
+          '1': { name: keyword.control.systemverilog }
+          '2': { name: storage.type.systemverilog }
+      - match: (`include)\b(?:\s*(<[^>]*>))?
+        captures:
+          '1': { name: keyword.control.systemverilog }
+          '2': { name: string.quoted.other.lt-gt.include.systemverilog }
+      - match: '`(?:begin_keywords|celldefine|else|end_keywords|endcelldefine|endif|line|nounconnected_drive|resetall|timescale|unconnected_drive|undefineall)\b'
+        name: keyword.control.systemverilog
+      - match: '``'
+        name: keyword.operator.systemverilog
+      - match: '`[A-Za-z_][\w$]*'
+        name: keyword.other.systemverilog
+
+  attributes:
+    # `(* name = value *)`; `@(*)` and `@ (*)` are event controls.
+    begin: (?<!@)(?<!@ )\(\*(?!\))
+    end: \*\)
+    captures:
+      '0': { name: keyword.operator.systemverilog }
+    name: meta.attribute.systemverilog
+    patterns:
+      - include: '#strings'
+      - include: '#numbers'
+      - match: '[A-Za-z_][\w$]*'
+        name: entity.other.attribute-name.systemverilog
+      - include: '#operators'
+
+  numbers:
+    match: >-
+      (?:\b\d[\d_]*\s*)?'[sS]?[bBoOdDhH]\s*[0-9a-fA-FxXzZ?_]+|'[01xXzZ](?![\w$])|\b\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?(?:fs|ps|ns|us|ms|s|step)?\b
+    name: constant.numeric.systemverilog
+
+  declarations:
+    patterns:
+      - match: \b(module|macromodule|program|checker|class)\s+(?:(automatic|static)\s+)?([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: storage.type.systemverilog }
+          '3': { name: entity.name.type.class.systemverilog }
+      - match: \b(interface)\s+(?:(class)\s+)?(?:(automatic|static)\s+)?([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: keyword.other.systemverilog }
+          '3': { name: storage.type.systemverilog }
+          '4': { name: entity.name.type.interface.systemverilog }
+      - match: \b(package)\s+(?:(automatic|static)\s+)?([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: storage.type.systemverilog }
+          '3': { name: entity.name.namespace.systemverilog }
+      - match: \b(extends|implements)\s+([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: entity.name.type.class.systemverilog }
+      # `function [lifetime] [return type] name (` on one line.
+      - match: \b(function|task)\s+(?:(automatic|static)\s+)?([^;()]*?)\b([A-Za-z_][\w$]*)\s*(?=[(;])
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: storage.type.systemverilog }
+          '3': { patterns: [{ include: $self }] }
+          '4': { name: entity.name.function.systemverilog }
+      # `typedef <type> name;` on one line (ST-12).
+      - match: \b(typedef)\b([^;{]*?)\b([A-Za-z_][\w$]*)\s*(?=(?:\[[^\]]*\]\s*)*;)
+        captures:
+          '1': { name: storage.type.systemverilog }
+          '2': { patterns: [{ include: $self }] }
+          '3': { name: entity.name.type.systemverilog }
+      # Sequence, property and let declarations are functions (ST-71).
+      - match: \b(property|sequence|let)\s+([A-Za-z_][\w$]*)(?=\s*[(;=])
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: entity.name.function.systemverilog }
+      # Block names and assertion labels are namespaces (ST-11).
+      - match: \b([A-Za-z_][\w$]*)\s*(:)(?=\s*(?:assert|assume|cover|restrict)\b)
+        captures:
+          '1': { name: entity.name.namespace.systemverilog }
+          '2': { name: keyword.operator.systemverilog }
+      - match: \b(begin|end|fork|join|join_any|join_none)\s*(:)\s*([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: keyword.operator.systemverilog }
+          '3': { name: entity.name.namespace.systemverilog }
+      - match: \b(endmodule|endprogram|endchecker|endclass)\s*(:)\s*([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: keyword.operator.systemverilog }
+          '3': { name: entity.name.type.class.systemverilog }
+      - match: \b(endinterface)\s*(:)\s*([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: keyword.operator.systemverilog }
+          '3': { name: entity.name.type.interface.systemverilog }
+      - match: \b(endpackage)\s*(:)\s*([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: keyword.operator.systemverilog }
+          '3': { name: entity.name.namespace.systemverilog }
+      - match: \b(endfunction|endtask|endproperty|endsequence)\s*(:)\s*([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.other.systemverilog }
+          '2': { name: keyword.operator.systemverilog }
+          '3': { name: entity.name.function.systemverilog }
+
+  calls:
+    # Method calls `x.f(` (also built-in methods spelled like keywords, such
+    # as `q.unique()`) and class-scope calls `C::f(` (ST-19, ST-41, ST-65).
+    match: (?<=[\w$)\]]\.|::)[A-Za-z_][\w$]*(?=\s*\()
+    name: entity.name.function.systemverilog
+
+  keywords:
+    patterns:
+      # Positional words (ST-04, ST-09): `unique case`, `disable iff`, and
+      # `default` as a case item versus an assignment-pattern key,
+      # `default clocking`, `default disable iff` or default bins.
+      - match: \b(?:unique0?|priority)\b(?=\s+(?:if|case[xz]?)\b)
+        name: keyword.control.systemverilog
+      - match: \bdisable\b(?=\s+iff\b)|(?<=assert |assume |cover )final\b
+        name: keyword.other.systemverilog
+      - match: (?<=\{|\{ |,|, )default\b|\bdefault\b(?=\s+(?:clocking|disable)\b|\s*;)
+        name: storage.type.systemverilog
+      - match: >-
+          \b(?:alias|always|always_comb|always_ff|always_latch|assert|assign|assume|break|case|casex|casez|continue|cover|deassign|default|disable|do|else|endcase|expect|final|for|force|foreach|forever|if|initial|randcase|release|repeat|restrict|return|wait|wait_order|while)\b
+        name: keyword.control.systemverilog
+      - match: \b(?:enum|struct|typedef|union)\b
+        name: storage.type.systemverilog
+      - match: \b(?:inout|input|output|ref)\b
+        name: storage.modifier.systemverilog
+      - match: >-
+          \b(?:automatic|bit|byte|chandle|const|event|genvar|int|integer|localparam|logic|longint|parameter|real|realtime|reg|shortint|shortreal|signed|specparam|static|string|supply0|supply1|time|tri|tri0|tri1|triand|trior|trireg|unsigned|uwire|var|void|wand|wire|wor)\b
+        name: storage.type.systemverilog
+      - match: >-
+          \b(?:accept_on|and|before|begin|bind|bins|binsof|buf|bufif0|bufif1|cell|checker|class|clocking|cmos|config|constraint|context|covergroup|coverpoint|cross|defparam|design|dist|edge|end|endchecker|endclass|endclocking|endconfig|endfunction|endgenerate|endgroup|endinterface|endmodule|endpackage|endprimitive|endprogram|endproperty|endsequence|endspecify|endtable|endtask|eventually|export|extends|extern|first_match|fork|forkjoin|function|generate|global|highz0|highz1|iff|ifnone|ignore_bins|illegal_bins|implements|implies|import|incdir|include|inside|instance|interconnect|interface|intersect|join|join_any|join_none|large|let|liblist|library|local|macromodule|matches|medium|modport|module|nand|negedge|nettype|new|nexttime|nmos|nor|noshowcancelled|not|notif0|notif1|null|or|package|packed|pmos|posedge|primitive|priority|program|property|protected|pull0|pull1|pulldown|pullup|pulsestyle_ondetect|pulsestyle_onevent|pure|rand|randc|randsequence|rcmos|reject_on|rnmos|rpmos|rtran|rtranif0|rtranif1|s_always|s_eventually|s_nexttime|s_until|s_until_with|scalared|sequence|showcancelled|small|soft|solve|specify|strong|strong0|strong1|super|sync_accept_on|sync_reject_on|table|tagged|task|this|throughout|timeprecision|timeunit|tran|tranif0|tranif1|type|unique|unique0|until|until_with|untyped|use|vectored|virtual|weak|weak0|weak1|wildcard|with|within|xnor|xor)\b
+        name: keyword.other.systemverilog
+
+  names:
+    patterns:
+      # Escaped identifiers run to the next white space.
+      - match: \\\S+
+      # System tasks and functions (ST-40).
+      - match: (?<![\w$])\$[A-Za-z_][\w$]*
+        name: support.function.systemverilog
+      # `pk::` qualifiers (ST-11).
+      - match: '[A-Za-z_][\w$]*(?=\s*::)'
+        name: entity.name.namespace.systemverilog
+      # Connection labels `.a(x)`, `.a` (ST-20) and method calls `x.f(`.
+      - match: (?<![\w$)\]])(\.)\s*([A-Za-z_][\w$]*)
+        captures:
+          '1': { name: keyword.operator.systemverilog }
+          '2': { name: entity.name.function.systemverilog }
+      # `Name #(` and `Name inst (`: a definition or class (ST-10).
+      - match: \b[A-Za-z_][\w$]*(?=\s*#\s*(?:\(|$)|\s+(?!(?:and|dist|iff|inside|intersect|matches|or|throughout|with|within|xor)\b)[A-Za-z_][\w$]*\s*\()
+        name: entity.name.type.class.systemverilog
+      # `type_t name;`: a user type in a declaration (ST-12).
+      - match: \b[A-Za-z_][\w$]*(?=\s+(?!(?:and|dist|iff|inside|intersect|matches|or|throughout|with|within|xor)\b)[A-Za-z_][\w$]*\s*(?:[;,=\[]|$))
+        name: entity.name.type.systemverilog
+      # `disable blk;` names a block (ST-11).
+      - match: (?<=\bdisable )[A-Za-z_][\w$]*(?=\s*;)
+        name: entity.name.namespace.systemverilog
+      # `} name;` closing a struct, union or enum typedef.
+      - match: (?<=\}|\} )[A-Za-z_][\w$]*(?=\s*;)
+        name: entity.name.type.systemverilog
+      # UPPER_CASE names are conventionally parameters or enum items, which
+      # the server sends as readonly variables and enum members (ST-13, ST-14).
+      - match: \b[A-Z][A-Z0-9_]*\b(?!\$)
+        name: variable.other.constant.systemverilog
+      # `type_t'(x)` casts to a type.
+      - match: '[A-Za-z_][\w$]*(?=''\()'
+        name: entity.name.type.systemverilog
+      - match: '[A-Za-z_][\w$]*'
+
+  operators:
+    # Operators and punctuation are `operator` (ST-23). Runs never swallow a
+    # comment start, `(*`, `.`, `'` or `$`, which other rules own.
+    match: '[-+*%!~&|^<>=?:@#,;{}\[\]]+|[()/.$'']'
+    name: keyword.operator.systemverilog

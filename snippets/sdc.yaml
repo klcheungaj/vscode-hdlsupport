@@ -1,0 +1,36 @@
+
+create_clock:
+  prefix: create_clock
+  description: create clock constraint
+  body:
+    - create_clock -period ${1:period} $0
+  
+set_clock_groups:
+  prefix: set_clock_groups
+  description: set clock groups constraint
+  body:
+    - set_clock_groups -${1|exclusive,asynchronous|} $0 
+
+"[get_ports]":
+  prefix: [get_ports,"[get_ports]"]
+  description: get ports
+  body:
+    - "[get_ports {$0}]"
+
+"-group":
+  prefix: -group
+  description: set group of signals
+  body:
+    - -group {$0}
+
+set_output_delay:
+  prefix: set_output_delay
+  description: set output delay
+  body:
+    - set_output_delay -clock ${1:clock} -reference_pin [get_ports ${2:pins}] -${3|max,min|} ${4:value} [get_ports {$0}]
+
+set_input_delay:
+  prefix: set_input_delay
+  description: set input delay
+  body:
+    - set_input_delay -clock ${1:clock} -reference_pin [get_ports ${2:pins}] -${3|max,min|} ${4:value} [get_ports {$0}]

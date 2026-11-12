@@ -1,0 +1,327 @@
+{
+  "name": "SDC",
+  "scopeName": "source.sdc",
+  "comment": "SDC extends source.tcl. Softbrush colors options as keywords and braces as operators in constraint files, and keeps static clock names out of strings and numbers. The injection applies that to every command of the base grammar; the commands below add the clock-name contexts. XDC includes this grammar.",
+  "fileTypes": [
+    "sdc"
+  ],
+  "patterns": [
+    {
+      "include": "#pathException"
+    },
+    {
+      "include": "#clockGroups"
+    },
+    {
+      "include": "#positionalClocks"
+    },
+    {
+      "include": "source.tcl"
+    }
+  ],
+  "injections": {
+    "L:meta.command.tcl - string.braced - meta.clock - meta.parameters": {
+      "comment": "Injections apply only from the root grammar, so source.xdc repeats this one. Rules here win ties with the base rules at the same position.",
+      "patterns": [
+        {
+          "include": "#constraintArguments"
+        }
+      ]
+    }
+  },
+  "repository": {
+    "constraintArguments": {
+      "comment": "Option, brace and clock-option rules that replace the base `#arguments` rules in constraint files.",
+      "patterns": [
+        {
+          "begin": "(?:^[ \\t]*|[ \\t]+)(-(?:clock|clocks|master_clock|from_clock|rise_from_clock|fall_from_clock|to_clock|rise_to_clock|fall_to_clock|rise_clock|fall_clock))[ \\t]+(\\{)(?![ \\t]*\\})(?![^}\\n]*\\\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            },
+            "2": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "contentName": "meta.clock.sdc",
+          "patterns": [
+            {
+              "include": "#plainBraces"
+            }
+          ]
+        },
+        {
+          "match": "(?:^[ \\t]*|[ \\t]+)(-(?:clock|clocks|master_clock|from_clock|rise_from_clock|fall_from_clock|to_clock|rise_to_clock|fall_to_clock|rise_clock|fall_clock))[ \\t]+(?:\"[^\"$\\[\\\\\\n]*[^\\s\"$\\[\\\\][^\"$\\[\\\\\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[$\\\\]*)(?=[\\s;\\]]|$)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            }
+          }
+        },
+        {
+          "include": "#bracedWord"
+        },
+        {
+          "match": "(?<![^ \\t\\f])(?![+-]?(?:(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?|(?i:inf|infinity|nan))(?=[\\s;\\]]|$))-[^\\s;\\]\\[$\\\\]*(?=[\\s;\\]]|$)",
+          "name": "keyword.control.sdc"
+        }
+      ]
+    },
+    "plainBraces": {
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": {
+          "name": "keyword.operator.sdc"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "keyword.operator.sdc"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\\\."
+        },
+        {
+          "include": "#plainBraces"
+        }
+      ]
+    },
+    "pathException": {
+      "comment": "Timing exceptions take clock names after -from/-to/-through. Clock-word rules consume the preceding space so they start before the injection.",
+      "name": "meta.command.tcl",
+      "begin": "((?:group_path|set_bus_skew|set_false_path|set_max_delay|set_min_delay|set_multicycle_path))(?=[\\s;\\]]|$)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.sdc"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "begin": "(?:^[ \\t]*|[ \\t]+)(-(?:from|rise_from|fall_from|to|rise_to|fall_to|through|rise_through|fall_through))[ \\t]+(\\{)(?![ \\t]*\\})(?![^}\\n]*\\\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            },
+            "2": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "contentName": "meta.clock.sdc",
+          "patterns": [
+            {
+              "include": "#plainBraces"
+            }
+          ]
+        },
+        {
+          "match": "(?:^[ \\t]*|[ \\t]+)(-(?:from|rise_from|fall_from|to|rise_to|fall_to|through|rise_through|fall_through))[ \\t]+(?:\"[^\"$\\[\\\\\\n]*[^\\s\"$\\[\\\\][^\"$\\[\\\\\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[$\\\\]*)(?=[\\s;\\]]|$)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            }
+          }
+        },
+        {
+          "include": "source.tcl#arguments"
+        }
+      ]
+    },
+    "clockGroups": {
+      "comment": "set_clock_groups takes clock names after -group.",
+      "name": "meta.command.tcl",
+      "begin": "(set_clock_groups)(?=[\\s;\\]]|$)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.sdc"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "begin": "(?:^[ \\t]*|[ \\t]+)(-(?:group))[ \\t]+(\\{)(?![ \\t]*\\})(?![^}\\n]*\\\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            },
+            "2": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "contentName": "meta.clock.sdc",
+          "patterns": [
+            {
+              "include": "#plainBraces"
+            }
+          ]
+        },
+        {
+          "match": "(?:^[ \\t]*|[ \\t]+)(-(?:group))[ \\t]+(?:\"[^\"$\\[\\\\\\n]*[^\\s\"$\\[\\\\][^\"$\\[\\\\\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[$\\\\]*)(?=[\\s;\\]]|$)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            }
+          }
+        },
+        {
+          "include": "source.tcl#arguments"
+        }
+      ]
+    },
+    "positionalClocks": {
+      "comment": "Commands whose positional arguments are clock names.",
+      "name": "meta.command.tcl",
+      "begin": "((?:get_clocks|set_clock_latency|set_clock_uncertainty|set_input_jitter|set_propagated_clock))(?=[\\s;\\]]|$)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.sdc"
+        }
+      },
+      "end": "(?=[;\\]])|(?<![\\\\\\n])$",
+      "patterns": [
+        {
+          "match": "(?:^[ \\t]*|[ \\t]+)(-(?:filter|of_objects|match_style))[ \\t]+(\\{(?:[^{}\\\\\\n]|\\\\.)*\\}|\"(?:[^\"\\\\\\n]|\\\\.)*\")",
+          "captures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            },
+            "2": {
+              "patterns": [
+                {
+                  "include": "#bracedWord"
+                },
+                {
+                  "include": "source.tcl#arguments"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "begin": "(?:^[ \\t]*|[ \\t]+)(-(?:from|rise_from|fall_from|to|rise_to|fall_to|through|rise_through|fall_through))[ \\t]+(\\{)(?![ \\t]*\\})(?![^}\\n]*\\\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            },
+            "2": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "contentName": "meta.clock.sdc",
+          "patterns": [
+            {
+              "include": "#plainBraces"
+            }
+          ]
+        },
+        {
+          "match": "(?:^[ \\t]*|[ \\t]+)(-(?:from|rise_from|fall_from|to|rise_to|fall_to|through|rise_through|fall_through))[ \\t]+(?:\"[^\"$\\[\\\\\\n]*[^\\s\"$\\[\\\\][^\"$\\[\\\\\\n]*\"|[^\\s;\\]\\[$\\\\\"{}\\-][^\\s;\\]\\[$\\\\]*)(?=[\\s;\\]]|$)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.sdc"
+            }
+          }
+        },
+        {
+          "begin": "(?:^[ \\t]*|[ \\t]+)(\\{)(?![ \\t]*\\})(?![^}\\n]*\\\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": {
+              "name": "keyword.operator.sdc"
+            }
+          },
+          "contentName": "meta.clock.sdc",
+          "patterns": [
+            {
+              "include": "#plainBraces"
+            }
+          ]
+        },
+        {
+          "match": "(?:^[ \\t]*|[ \\t]+)(?:\"[^\"$\\[\\\\\\n]*[^\\s\"$\\[\\\\][^\"$\\[\\\\\\n]*\")(?=[\\s;\\]]|$)",
+          "captures": {}
+        },
+        {
+          "include": "source.tcl#arguments"
+        }
+      ]
+    },
+    "bracedWord": {
+      "begin": "(?<![^ \\t\\f;\\[}])\\{",
+      "beginCaptures": {
+        "0": {
+          "name": "keyword.operator.sdc"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "keyword.operator.sdc"
+        }
+      },
+      "contentName": "string.braced.sdc",
+      "patterns": [
+        {
+          "match": "\\\\."
+        },
+        {
+          "include": "#nestedBraces"
+        }
+      ]
+    },
+    "nestedBraces": {
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": {
+          "name": "keyword.operator.sdc"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "keyword.operator.sdc"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\\\."
+        },
+        {
+          "include": "#nestedBraces"
+        }
+      ]
+    }
+  }
+}

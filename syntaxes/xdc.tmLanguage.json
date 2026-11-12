@@ -1,0 +1,22 @@
+{
+  "name": "XDC",
+  "scopeName": "source.xdc",
+  "comment": "XDC uses the SDC grammar; only the injection is repeated because injections apply from the root grammar alone.",
+  "fileTypes": [
+    "xdc"
+  ],
+  "patterns": [
+    {
+      "include": "source.sdc"
+    }
+  ],
+  "injections": {
+    "L:meta.command.tcl - string.braced - meta.clock - meta.parameters": {
+      "patterns": [
+        {
+          "include": "source.sdc#constraintArguments"
+        }
+      ]
+    }
+  }
+}

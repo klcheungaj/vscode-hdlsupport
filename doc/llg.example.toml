@@ -1,0 +1,76 @@
+# llg.toml — complete example (schema v1)
+#
+# Each file uses the closest llg.toml in its directory or a parent, up to the
+# workspace root. Relative paths resolve from this file's directory.
+# Unknown fields and rule ids are errors. Edits are hot-reloaded.
+
+schema_version = 1  # required; only 1 is supported
+
+[sources]
+# directories: WHERE to look. Root folders to scan; each is also searched
+#              for `include files.
+# include:     WHICH files to compile. Globs matched inside each directory
+#              ("**/" recurses). Unrelated to `include and include_dirs.
+# exclude:     globs to skip; wins over include.
+directories = ["rtl", "../shared-rtl"]
+include = ["**/*.v", "**/*.sv"]
+exclude = ["**/generated/**", ".git/**", "target/**"]
+# Without an llg.toml: directories = ["."], include as above,
+# exclude = ["slpp_all/**", ".git/**", "target/**"].
+
+[compile]
+top = "top"                                      # elaboration top (optional)
+include_dirs = ["include", "../vendor/include"]  # `include search only; not compiled
+defines = ["SYNTHESIS", "WIDTH=8"]               # NAME or NAME=VALUE
+
+[compile.param_overrides]
+# Top-level parameter overrides (like -GNAME=value). Values: string or integer.
+# Invalid entries are dropped with a warning; unknown names are errors.
+DEPTH = "1024"
+WIDTH = 8
+
+[lint]
+enabled = true  # false turns every rule off except those re-enabled below
+
+# Each rule takes:  enabled = true|false
+#                   severity = "error" | "warning" | "info"
+#
+# Rule                         Flags
+# --- Unused / undriven ---------------------------------------------------
+# unused-signal                signal never read
+# unused-parameter             parameter never read
+# undriven-signal              signal read but never driven
+# unconnected-port             instance port left unconnected
+# implicit-net                 undeclared name became an implicit wire (typo?)
+# --- Width / range -------------------------------------------------------
+# width-mismatch               assignment truncates or extends a value
+# comparison-width-mismatch    comparison operands have different widths
+# out-of-range-select          bit/part select outside declared bounds
+# --- Drivers / processes -------------------------------------------------
+# multi-driver                 signal driven from more than one place
+# combinational-loop           combinational feedback loop
+# blocking-in-always_ff        `=` in always_ff / edge-triggered always
+# nba-in-always_comb           `<=` in always_comb / always @*
+# mixed-assignments            `=` and `<=` mixed in one process
+# incomplete-sensitivity-list  signal read but missing from always @(...)
+# empty-implicit-sensitivity   always @* that reads no signals
+# --- Latches / case ------------------------------------------------------
+# if-latch                     signal not assigned on every path (latch)
+# incomplete-case              combinational case without default (latch)
+# case-default-missing         case without default elsewhere
+# duplicate-case-item          same case item listed twice
+# casez-misuse                 overlapping or constant casez/casex items
+# casex-statement              any casex statement
+# --- Expressions / style -------------------------------------------------
+# xz-logical-equality          `==` / `!=` against an X/Z literal
+# assignment-in-condition      assignment used as a condition
+# naming-style                 names not snake_case / UPPER_SNAKE_CASE
+
+[lint.rules.unused-signal]
+# enabled = false
+
+[lint.rules.width-mismatch]
+severity = "error"
+
+[lint.rules.case-default-missing]
+enabled = false

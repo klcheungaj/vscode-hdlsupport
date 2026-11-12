@@ -1,0 +1,43 @@
+# vsce packaging rules (linux-x64 variant) — WHITELIST style.
+# Everything is denied by the leading "**"; only explicitly re-included
+# ("!") entries ship. Note on vsce semantics: a file ships if ANY "!"
+# rule matches it, regardless of position, so re-inclusions must be
+# narrow — exact file names or "*.json" — never whole directories,
+# or unwanted siblings (.map, *.yaml, ...) would ship too.
+#
+# The linux-x64 marketplace package bundles server/linux-x64/llg_ls (the
+# "!server/linux-x64/llg_ls" line below).
+
+**
+
+# Manifest, docs and license (package.json/README.md are also force-
+# included by vsce itself; LICENSE is renamed to LICENSE.txt at pack time)
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE
+
+# Vite bundle + its generated license notice (no .map)
+!dist/extension.js
+!dist/extension.js.LICENSE.txt
+
+# Staged llg language-server binary (linux-x64 only)
+!server/linux-x64/llg_ls
+
+# Example llg config and schema referenced by the packaged README
+!doc/llg.example.toml
+!schemas/llg.schema.json
+
+# Grammar/language-configuration JSON build products only (no *.yaml sources)
+!syntaxes/**/*.json
+!snippets/**/*.json
+
+# Activity-bar icon of the HDL Modules view container (exact file, nothing
+# else from media/)
+!media/hdl-modules.svg
+
+# Marketplace/extension icon (manifest "icon" must be PNG; the SVG stays source-only)
+!media/icon.png
+
+# Tcl/SDC/XDC language server
+!server/linux-x64/softbrush_ls

@@ -1,0 +1,70 @@
+name: Dependency audit
+
+on:
+  push:
+  pull_request:
+  # New advisories are published against unchanged lockfiles, so re-audit
+  # the default branch weekly even without new commits.
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.12.0'
+
+jobs:
+  npm-audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # Install scripts are not needed to audit and are skipped so a
+      # compromised package cannot run code in this job.
+      - run: npm ci --ignore-scripts
+      - name: Verify registry signatures and provenance attestations
+        run: npm audit signatures
+      - name: Audit runtime dependencies bundled into the VSIX
+        run: npm audit --omit=dev --audit-level=low
+      - name: Audit the full dependency tree
+        shell: bash
+        run: |
+          status=0
+          npm audit --audit-level=critical > npm-audit.txt || status=$?
+          cat npm-audit.txt
+          {
+            echo '### npm audit (all dependencies)'
+            echo
+            echo '```text'
+            cat npm-audit.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Reject pull requests that add vulnerable runtime dependencies
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: low
+          fail-on-scopes: runtime

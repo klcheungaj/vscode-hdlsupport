@@ -1,0 +1,17 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"outDir": "out",
+		"rootDir": "src",
+		"types": ["node", "mocha"]
+	},
+	"include": [
+		"src/test/e2e/clientHost/runTest.ts",
+		"src/test/e2e/clientHost/suite/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		".vscode-test",
+		"out"
+	]
+}

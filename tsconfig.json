@@ -1,0 +1,40 @@
+{
+	"compilerOptions": {
+		// Output
+		"module": "commonjs",
+		"target": "ES2022",
+		"lib": ["ES2022"],
+		"outDir": "out",
+		"rootDir": "src",
+		"sourceMap": false,
+		"removeComments": true,
+
+		// Module resolution
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+
+		// Type checking (strict mode + extras)
+		"strict": true,
+		"strictNullChecks": true,
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		// "noImplicitOverride": true,
+		// "noUnusedLocals": true,
+		// "noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true,
+
+		// Interop / misc
+		"isolatedModules": false,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"types": ["node", "mocha"]
+	},
+	"include": ["src"],
+	"exclude": [
+		"node_modules",
+		".vscode-test",
+		"out",
+		"src/test/e2e/playwright"
+	]
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/klcheungaj/vscode-hdlsupport/schemas/llg.schema.json",
+  "title": "Lapligence llg.toml",
+  "description": "Configuration schema for the Lapligence Verilog/SystemVerilog language server.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "directories": { "type": "array", "items": { "type": "string" } },
+        "include": { "type": "array", "items": { "type": "string" } },
+        "exclude": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "compile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "top": { "type": "string" },
+        "include_dirs": { "type": "array", "items": { "type": "string" } },
+        "defines": { "type": "array", "items": { "type": "string" } },
+        "param_overrides": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "integer"] }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_file_bytes": { "type": "integer", "minimum": 1, "default": 1048576 },
+        "max_total_input_bytes": { "type": "integer", "minimum": 1, "default": 8388608 }
+      }
+    },
+    "lint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "unused-signal": { "$ref": "#/$defs/lintRule" },
+            "width-mismatch": { "$ref": "#/$defs/lintRule" },
+            "incomplete-case": { "$ref": "#/$defs/lintRule" },
+            "combinational-loop": { "$ref": "#/$defs/lintRule" },
+            "multi-driver": { "$ref": "#/$defs/lintRule" },
+            "casez-misuse": { "$ref": "#/$defs/lintRule" },
+            "if-latch": { "$ref": "#/$defs/lintRule" },
+            "naming-style": { "$ref": "#/$defs/lintRule" },
+            "blocking-in-always_ff": { "$ref": "#/$defs/lintRule" },
+            "nba-in-always_comb": { "$ref": "#/$defs/lintRule" },
+            "unused-parameter": { "$ref": "#/$defs/lintRule" },
+            "implicit-net": { "$ref": "#/$defs/lintRule" },
+            "case-default-missing": { "$ref": "#/$defs/lintRule" },
+            "comparison-width-mismatch": { "$ref": "#/$defs/lintRule" },
+            "unconnected-port": { "$ref": "#/$defs/lintRule" },
+            "mixed-assignments": { "$ref": "#/$defs/lintRule" },
+            "undriven-signal": { "$ref": "#/$defs/lintRule" },
+            "incomplete-sensitivity-list": { "$ref": "#/$defs/lintRule" },
+            "out-of-range-select": { "$ref": "#/$defs/lintRule" },
+            "xz-logical-equality": { "$ref": "#/$defs/lintRule" },
+            "duplicate-case-item": { "$ref": "#/$defs/lintRule" },
+            "empty-implicit-sensitivity": { "$ref": "#/$defs/lintRule" },
+            "assignment-in-condition": { "$ref": "#/$defs/lintRule" },
+            "casex-statement": { "$ref": "#/$defs/lintRule" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "lintRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "severity": { "enum": ["error", "warning", "info"] }
+      }
+    }
+  }
+}
