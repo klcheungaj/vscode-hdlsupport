@@ -3,7 +3,6 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { pathToFileURL } from 'url';
 import * as vscode from 'vscode';
 
 import { isProcessAlive, terminateRecordedProcesses } from '../../../support/process';
@@ -208,7 +207,10 @@ function sourceLocation(value: unknown, context: string): SourceLocation {
     if (range.endLine === range.startLine) {
         assert.ok(range.endCharacter >= range.startCharacter, `${context} range has reversed columns`);
     }
-    return { uri: record.uri as string, range };
+    // The fake server runs on the test runner's Node, whose file URLs can encode
+    // characters (`~`, the Windows drive colon) differently from the host's
+    // Uri.toString(); compare locations in VS Code's form.
+    return { uri: vscode.Uri.parse(record.uri as string).toString(), range };
 }
 
 function snapshotContentLocation(
@@ -247,7 +249,7 @@ async function showEditorForCommands(document: vscode.TextDocument): Promise<vsc
 function assertActiveEditorAt(location: SourceLocation): void {
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, 'provider navigation did not leave an active text editor');
-    assert.strictEqual(editor.document.uri.toString(), vscode.Uri.parse(location.uri).toString());
+    assert.strictEqual(editor.document.uri.toString(), location.uri);
     assert.deepStrictEqual(
         {
             startLine: editor.selection.start.line,
@@ -610,8 +612,7 @@ describe('hdlsupport llg client host', () => {
             [inputPorts, outputPorts],
         );
 
-        // The fake server records Node-style file URLs, which differ from `Uri.toString()` on Windows.
-        const childUri = pathToFileURL(path.join(workspaceFolder().uri.fsPath, 'child.sv')).href;
+        const childUri = vscode.Uri.file(path.join(workspaceFolder().uri.fsPath, 'child.sv')).toString();
         const moduleLocation = snapshotModuleLocation(fakeSnapshot, 'child');
         const instanceLocation = snapshotNodeLocation(fakeSnapshot, wide.id);
         const expectedLocations = {
