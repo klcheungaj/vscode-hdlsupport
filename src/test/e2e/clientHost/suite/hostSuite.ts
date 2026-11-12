@@ -233,6 +233,17 @@ function snapshotModuleLocation(snapshot: Record<string, unknown>, moduleName: s
     return sourceLocation(module, `fake module ${moduleName}`);
 }
 
+/**
+ * Shows `document` in an editor that receives editor commands. Commands such
+ * as `editor.action.commentLine` and `default:type` target the focused code
+ * editor first, and recent VS Code builds open the Chat view in the secondary
+ * side bar, whose input box is a code editor that can keep that focus.
+ */
+async function showEditorForCommands(document: vscode.TextDocument): Promise<vscode.TextEditor> {
+    await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
+    return vscode.window.showTextDocument(document);
+}
+
 function assertActiveEditorAt(location: SourceLocation): void {
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, 'provider navigation did not leave an active text editor');
@@ -752,11 +763,16 @@ describe('hdlsupport llg client host', () => {
             const uri = vscode.Uri.file(path.join(folder.uri.fsPath, `editor-profile.${extension}`));
             await vscode.workspace.fs.writeFile(uri, Buffer.from('set value 1\n'));
             const document = await vscode.workspace.openTextDocument(uri);
-            const editor = await vscode.window.showTextDocument(document);
+            const editor = await showEditorForCommands(document);
 
             assert.strictEqual(document.languageId, languageId);
             editor.selection = new vscode.Selection(0, 0, 0, 0);
-            await vscode.commands.executeCommand('editor.action.commentLine');
+            // VS Code reads a language's configuration file asynchronously when the
+            // first document of that language opens, so retry until comments apply.
+            await pollUntil(async () => {
+                await vscode.commands.executeCommand('editor.action.commentLine');
+                return /^# ?set value 1$/.test(document.lineAt(0).text) ? true : null;
+            }, 10_000);
             assert.match(document.lineAt(0).text, /^# ?set value 1$/);
             await vscode.commands.executeCommand('editor.action.commentLine');
             assert.strictEqual(document.lineAt(0).text, 'set value 1');
@@ -774,7 +790,7 @@ describe('hdlsupport llg client host', () => {
         const uri = vscode.Uri.file(path.join(folder.uri.fsPath, 'braced-body.tcl'));
         await vscode.workspace.fs.writeFile(uri, Buffer.from('proc p {} {\n    \n}\n'));
         const document = await vscode.workspace.openTextDocument(uri);
-        const editor = await vscode.window.showTextDocument(document);
+        const editor = await showEditorForCommands(document);
 
         // Braced script bodies are strings in the grammar, as in Softbrush, but
         // their `string.braced` token type keeps brackets auto-closing inside them.
