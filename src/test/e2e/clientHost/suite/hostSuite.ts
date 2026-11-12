@@ -3,6 +3,7 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import * as vscode from 'vscode';
 
 import { isProcessAlive, terminateRecordedProcesses } from '../../../support/process';
@@ -235,7 +236,7 @@ function snapshotModuleLocation(snapshot: Record<string, unknown>, moduleName: s
 function assertActiveEditorAt(location: SourceLocation): void {
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, 'provider navigation did not leave an active text editor');
-    assert.strictEqual(editor.document.uri.toString(), location.uri);
+    assert.strictEqual(editor.document.uri.toString(), vscode.Uri.parse(location.uri).toString());
     assert.deepStrictEqual(
         {
             startLine: editor.selection.start.line,
@@ -324,7 +325,8 @@ describe('hdlsupport llg client host', () => {
         const folder = workspaceFolder();
         const configFiles = raw.initializationOptions?.llg?.configFiles;
         assert.ok(Array.isArray(configFiles) && configFiles.length >= 1, 'configFiles missing');
-        assert.strictEqual(configFiles[0].workspaceUri, folder.uri.toString());
+        // The payload uses Node's file URL form; VS Code encodes Windows drive letters differently.
+        assert.strictEqual(vscode.Uri.parse(String(configFiles[0].workspaceUri)).toString(), folder.uri.toString());
         assert.strictEqual(configFiles[0].path, path.join(folder.uri.fsPath, 'llg.toml'));
 
         assert.ok(raw.capabilities !== undefined, 'client capabilities missing');
@@ -597,7 +599,8 @@ describe('hdlsupport llg client host', () => {
             [inputPorts, outputPorts],
         );
 
-        const childUri = vscode.Uri.file(path.join(workspaceFolder().uri.fsPath, 'child.sv')).toString();
+        // The fake server records Node-style file URLs, which differ from `Uri.toString()` on Windows.
+        const childUri = pathToFileURL(path.join(workspaceFolder().uri.fsPath, 'child.sv')).href;
         const moduleLocation = snapshotModuleLocation(fakeSnapshot, 'child');
         const instanceLocation = snapshotNodeLocation(fakeSnapshot, wide.id);
         const expectedLocations = {
