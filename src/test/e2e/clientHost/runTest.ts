@@ -177,8 +177,10 @@ export async function run(): Promise<void> {
     await requireDisplayForGuiTest('clientHost');
 
     // Fresh fixture workspace per invocation; the fake server + control files
-    // live next to it so everything is cleaned up together afterwards.
-    const fixture = createWorkspaceFixture('hdlsupport-e2e-host');
+    // live next to it so everything is cleaned up together afterwards. macOS
+    // limits socket paths to 103 characters and VS Code creates
+    // <user-data-dir>/<version>-main.sock, so keep the directory name short.
+    const fixture = createWorkspaceFixture('hdl-e2e');
     const userDataDir = path.join(fixture.baseDir, 'user-data');
     let testFailed = false;
     let testError: unknown;
