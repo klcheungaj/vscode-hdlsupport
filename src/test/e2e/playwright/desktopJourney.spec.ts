@@ -123,9 +123,14 @@ test.describe('HDL Modules desktop journey', () => {
 
         const editor = page.locator('.monaco-editor .view-lines').first();
         await expect(editor).toBeVisible({ timeout: READY_TIMEOUT_MS });
-        await editor.click();
-        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
-        await page.keyboard.type(' ');
+        // On macOS CI the click has been seen not to reach the editor, leaving the
+        // keystrokes with no target; retry until the tab shows unsaved changes.
+        await expect(async () => {
+            await editor.click();
+            await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+            await page.keyboard.type(' ');
+            await expect(page.locator('.tab.active.dirty')).toBeVisible({ timeout: 2_000 });
+        }, 'typing into top.sv did not modify the document').toPass({ timeout: READY_TIMEOUT_MS });
 
         await expect.poll(
             async () => (await problems.textContent()) ?? '',
