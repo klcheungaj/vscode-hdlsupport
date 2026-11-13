@@ -77,7 +77,9 @@ describe('process cleanup helpers', () => {
         async () => {
             // Arrange: `exec sleep` replaces the shell, so nothing reaps the
             // background child and it stays a zombie in the detached group.
-            const leader = spawn('sh', ['-c', 'true & echo $!; exec sleep 30'], {
+            // The child outlives the exec; one that exits first can still be
+            // reaped by the shell (seen on CI).
+            const leader = spawn('sh', ['-c', 'sleep 0.2 & echo $!; exec sleep 30'], {
                 detached: true,
                 stdio: ['ignore', 'pipe', 'ignore'],
             });

@@ -121,14 +121,16 @@ test.describe('HDL Modules desktop journey', () => {
             { timeout: READY_TIMEOUT_MS, message: 'Lapligence lint diagnostic did not reach the Problems panel' },
         ).toContain('signal `unused_sig` is never used');
 
-        const editor = page.locator('.monaco-editor .view-lines').first();
-        await expect(editor).toBeVisible({ timeout: READY_TIMEOUT_MS });
-        // On macOS CI the click has been seen not to reach the editor, leaving the
-        // keystrokes with no target; retry until the tab shows unsaved changes.
+        // Synthetic mouse clicks over CDP do not reliably focus the editor (on
+        // macOS CI the cursor never moved), so send keys to the editor's input
+        // element directly: a textarea in older VS Code, an EditContext node in
+        // newer builds. Retry until the tab shows unsaved changes.
+        const editorInput = page
+            .locator('.monaco-editor textarea.inputarea, .monaco-editor .native-edit-context')
+            .first();
         await expect(async () => {
-            await editor.click();
-            await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
-            await page.keyboard.type(' ');
+            await editorInput.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+            await editorInput.press('Space');
             await expect(page.locator('.tab.active.dirty')).toBeVisible({ timeout: 2_000 });
         }, 'typing into top.sv did not modify the document').toPass({ timeout: READY_TIMEOUT_MS });
 
