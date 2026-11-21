@@ -136,7 +136,9 @@ async function runWithTimeout(baseDir: string, projectDir: string, sourcePath: s
 async function run(): Promise<void> {
     await requireDisplayForGuiTest('real-softbrush-host');
     fs.accessSync(SERVER_PATH, fs.constants.X_OK);
-    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdlsupport-real-softbrush-host-'));
+    // macOS limits socket paths to 103 characters and VS Code creates
+    // <user-data-dir>/<version>-main.sock, so keep the directory name short.
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdl-sb-'));
     const projectDir = path.join(baseDir, 'project');
     const sourcePath = path.join(projectDir, 'constraints.sdc');
     fs.mkdirSync(projectDir);
