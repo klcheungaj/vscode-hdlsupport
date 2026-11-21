@@ -7,6 +7,10 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_TIMEOUT_MS = 5_000;
+// A cold PowerShell start plus the first CIM query can take well over 10s on
+// loaded CI runners; the query runs once, so a generous bound costs nothing
+// when it is fast.
+const WINDOWS_TREE_QUERY_TIMEOUT_MS = 60_000;
 const DEFAULT_POLL_INTERVAL_MS = 100;
 
 export interface TerminateProcessOptions {
@@ -199,6 +203,7 @@ async function readWindowsProcessTree(
     // PowerShell/CIM is present on supported Windows runners and lets us
     // retain descendant PIDs even if the root exits before taskkill starts.
     const script = windowsProcessTreeScript(pid);
+    const queryTimeoutMs = Math.max(timeoutMs, WINDOWS_TREE_QUERY_TIMEOUT_MS);
     try {
         const result = await execFileAsync('powershell.exe', [
             '-NoProfile',
@@ -207,7 +212,7 @@ async function readWindowsProcessTree(
             script,
         ], {
             windowsHide: true,
-            timeout: timeoutMs,
+            timeout: queryTimeoutMs,
             maxBuffer: 1024 * 1024,
         });
         const descendants = result.stdout
@@ -216,7 +221,9 @@ async function readWindowsProcessTree(
             .filter((candidate) => Number.isSafeInteger(candidate) && candidate > 0 && candidate !== pid);
         return { complete: true, descendants: [...new Set(descendants)] };
     } catch (error) {
-        onWarning?.(`could not enumerate Windows descendants of process ${pid}: ${String(error)}`);
+        const killed = error instanceof Error && 'killed' in error && error.killed === true;
+        const reason = killed ? `timed out after ${queryTimeoutMs}ms` : String(error);
+        onWarning?.(`could not enumerate Windows descendants of process ${pid}: ${reason}`);
         return { complete: false, descendants: [] };
     }
 }
