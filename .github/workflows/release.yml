@@ -200,7 +200,7 @@ jobs:
       - name: Prepare versioned release assets
         shell: bash
         env:
-          ASSET_NAME: hdl-support-${{ steps.metadata.outputs.version }}-linux-x64.vsix
+          ASSET_NAME: hdl-support-${{ steps.metadata.outputs.version }}-linux-x86_64.vsix
         run: |
           cp hdl-support-linux-x64.vsix "$ASSET_NAME"
           sha256sum "$ASSET_NAME" > "${ASSET_NAME}.sha256"
@@ -212,8 +212,8 @@ jobs:
         with:
           name: github-release-${{ steps.metadata.outputs.version }}-linux-x64
           path: |
-            hdl-support-${{ steps.metadata.outputs.version }}-linux-x64.vsix
-            hdl-support-${{ steps.metadata.outputs.version }}-linux-x64.vsix.sha256
+            hdl-support-${{ steps.metadata.outputs.version }}-linux-x86_64.vsix
+            hdl-support-${{ steps.metadata.outputs.version }}-linux-x86_64.vsix.sha256
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
@@ -231,9 +231,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        target: [linux-arm64, darwin-arm64, win32-x64, win32-arm64]
+        # `asset` names the release file in the <os>-<arch> style of the
+        # Lapligence and Softbrush release archives.
+        include:
+          - { target: linux-arm64, asset: linux-arm64 }
+          - { target: darwin-arm64, asset: macos-arm64 }
+          - { target: win32-x64, asset: windows-x86_64 }
+          - { target: win32-arm64, asset: windows-arm64 }
     env:
-      ASSET_NAME: hdl-support-${{ needs.build-and-verify.outputs.version }}-${{ matrix.target }}.vsix
+      ASSET_NAME: hdl-support-${{ needs.build-and-verify.outputs.version }}-${{ matrix.asset }}.vsix
       HDLSUPPORT_PACKAGE_TARGET: ${{ matrix.target }}
     steps:
       - name: Check out the verified release source
@@ -321,22 +327,22 @@ jobs:
           fi
 
           declare -A labels=(
-            [linux-x64]='Linux x64'
+            [linux-x86_64]='Linux x64'
             [linux-arm64]='Linux arm64'
-            [darwin-arm64]='macOS Apple silicon'
-            [win32-x64]='Windows x64'
-            [win32-arm64]='Windows arm64'
+            [macos-arm64]='macOS Apple silicon'
+            [windows-x86_64]='Windows x64'
+            [windows-arm64]='Windows arm64'
           )
           args=(release create "$RELEASE_TAG")
-          for target in linux-x64 linux-arm64 darwin-arm64 win32-x64 win32-arm64; do
-            asset="release-assets/hdl-support-${RELEASE_VERSION}-${target}.vsix"
+          for platform in linux-x86_64 linux-arm64 macos-arm64 windows-x86_64 windows-arm64; do
+            asset="release-assets/hdl-support-${RELEASE_VERSION}-${platform}.vsix"
             if [[ ! -f "$asset" || ! -f "${asset}.sha256" ]]; then
-              echo "missing release asset for ${target}: ${asset}" >&2
+              echo "missing release asset for ${platform}: ${asset}" >&2
               exit 1
             fi
             args+=(
-              "${asset}#${labels[$target]} VSIX"
-              "${asset}.sha256#${labels[$target]} SHA-256 checksum"
+              "${asset}#${labels[$platform]} VSIX"
+              "${asset}.sha256#${labels[$platform]} SHA-256 checksum"
             )
           done
           args+=(

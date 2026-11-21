@@ -162,8 +162,11 @@ This is the recommended manual release path:
 5. Start the workflow and, if configured, approve the `github-release`
    environment after the build-and-verify job succeeds.
 6. Confirm that the resulting `v0.2.1` GitHub Release contains
-   `hdl-support-0.2.1-<target>.vsix` and its `.sha256` file for each of
-   linux-x64, linux-arm64, darwin-arm64, win32-x64, and win32-arm64.
+   `hdl-support-0.2.1-<os>-<arch>.vsix` and its `.sha256` file for each of
+   `linux-x86_64`, `linux-arm64`, `macos-arm64`, `windows-x86_64`, and
+   `windows-arm64`. Release files use the `<os>-<arch>` names of the
+   Lapligence and Softbrush release archives; locally built packages keep the
+   VS Code target name (`hdl-support-<target>.vsix`).
 
 The workflow creates the `v0.2.1` tag at the exact verified commit when the tag
 does not already exist.
@@ -202,7 +205,7 @@ mkdir hdl-support-0.2.1-release
 cd hdl-support-0.2.1-release
 gh release download v0.2.1 --repo <owner>/<repository>
 sha256sum --check hdl-support-0.2.1-*.vsix.sha256
-code --install-extension hdl-support-0.2.1-linux-x64.vsix   # pick your platform's file
+code --install-extension hdl-support-0.2.1-linux-x86_64.vsix   # pick your platform's file
 ```
 
 If verification fails before publishing, fix the source or metadata on the
