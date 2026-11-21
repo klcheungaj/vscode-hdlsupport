@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -11,9 +10,9 @@ import {
     type RealProjectFixture,
 } from './fixtures/realProject';
 import { LspStdioClient } from './helpers/lspClient';
+import { stagedServerPath } from '../support/stagedServer';
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
-const SERVER_BIN = path.join(REPO_ROOT, 'server', 'linux-x64', 'llg_ls');
+const SERVER_BIN = stagedServerPath('llg_ls');
 
 const READY_TIMEOUT_MS = 150_000;
 const REQUEST_TIMEOUT_MS = 90_000;

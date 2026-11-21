@@ -221,7 +221,8 @@ jobs:
   # The servers for every other target come from the same pinned,
   # checksum-verified releases and are packaged on Linux. Only the archive is
   # checked here (contents, target manifest, and ELF linkage for Linux
-  # targets); the servers' own CI runs them natively.
+  # targets); the CI workflow's real-server matrix runs these servers with the
+  # extension on native runners.
   package-platforms:
     name: Package ${{ matrix.target }} VSIX
     needs: build-and-verify

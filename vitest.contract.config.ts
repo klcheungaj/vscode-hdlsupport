@@ -15,7 +15,10 @@ const contractVirtualVscodeModule = {
     },
 };
 
-const serverBinary = path.resolve(__dirname, 'server', 'linux-x64', 'llg_ls');
+// Same host-target path as src/test/support/stagedServer.ts.
+const serverBinary = path.resolve(
+    __dirname, 'server', `${process.platform}-${process.arch}`, process.platform === 'win32' ? 'llg_ls.exe' : 'llg_ls',
+);
 
 function isEnabled(value: string | undefined): boolean {
     const normalized = value?.trim().toLowerCase();

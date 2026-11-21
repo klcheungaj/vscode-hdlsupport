@@ -10,10 +10,11 @@ import { persistDiagnosticDirectory } from '../../../support/artifacts';
 import { requireDisplayForGuiTest } from '../../../support/display';
 import { VSCODE_DOWNLOAD_TIMEOUT_MS } from '../../../support/vscodeDownload';
 import { terminateProcessTree } from '../../../support/process';
+import { stagedServerPath } from '../../../support/stagedServer';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
 const COMPILED_SUITE = path.join(__dirname, 'realLlgHostIndex.js');
-const SERVER_PATH = path.join(REPO_ROOT, 'server', 'linux-x64', 'llg_ls');
+const SERVER_PATH = stagedServerPath('llg_ls');
 const HOST_WORKER_ARGUMENT = '--hdlsupport-real-llg-host-worker';
 const HOST_WORKER_TIMEOUT_MS = 180_000;
 const REAL_LLG_MODE_ENV = 'HDLSUPPORT_REAL_LLG_MODE';

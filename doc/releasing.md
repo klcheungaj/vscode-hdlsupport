@@ -23,10 +23,10 @@ request cancels the older run.
 | --- | --- | --- |
 | Quality | Linux, Windows, macOS | npm clean install, ESLint, TypeScript, Vitest unit tests; Linux also regenerates grammars/snippets and rejects drift |
 | GUI | Linux, Windows, macOS; VS Code 1.82.3 and stable | Playwright workbench journey and `@vscode/test-electron` extension-host suite; failed-run logs and reports are uploaded |
-| Real servers and package | Linux | Pinned, checksum-verified `llg_ls` and `softbrush_ls` release downloads, Linux x64 VSIX, unit and raw-stdio contracts, real VS Code/llg diagnostics in folder and standalone windows, archive validation including static linkage/mimalloc, real Softbrush startup/diagnostics, and SHA-256 artifact |
+| Real servers | linux-x64, linux-arm64, darwin-arm64, win32-x64, win32-arm64 (native runners) | Pinned, checksum-verified `llg_ls` and `softbrush_ls` release downloads for the runner's target, raw-stdio contracts, real VS Code/llg diagnostics in folder and standalone windows, real Softbrush startup/diagnostics; linux-x64 also builds the VSIX, validates the archive including static linkage/mimalloc, and uploads it with a SHA-256 file |
 
 The real-server job does not build either server. `npm run stage:server`
-and `npm run stage:softbrush` download the static musl Linux x64 assets of the
+and `npm run stage:softbrush` download the runner's target assets of the
 Lapligence and Softbrush GitHub releases pinned in `scripts/stage-server.ts`
 and `scripts/stage-softbrush.ts`, and refuse any archive whose SHA-256 differs
 from the value pinned there.
@@ -81,8 +81,9 @@ darwin-arm64, win32-x64, and win32-arm64 on Linux from the same pinned,
 checksum-verified server releases and runs the package contract against each
 one: the archive contents, the `TargetPlatform` in its manifest, only that
 target's servers, and ELF static linkage for Linux targets. These servers are
-not executed in this workflow; each server repository's own CI runs them
-natively. Every VSIX is uploaded with a SHA-256 file.
+not executed in this workflow; the CI real-server matrix runs the same pinned
+servers with the extension on each target's native runner. Every VSIX is
+uploaded with a SHA-256 file.
 
 The build-and-verify job has read-only repository permission. The publish job
 is the only job with `contents: write`, and it is attached to the

@@ -6,9 +6,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { computeTreeChecksum, positionAt } from './fixtures/workspace';
 import { LspStdioClient } from './helpers/lspClient';
+import { stagedServerPath } from '../support/stagedServer';
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
-const SERVER_BIN = path.join(REPO_ROOT, 'server', 'linux-x64', 'llg_ls');
+const SERVER_BIN = stagedServerPath('llg_ls');
 const EXTERNAL_WORKSPACE_ENV = 'HDLSUPPORT_E2E_EXTERNAL_WORKSPACE';
 const configuredWorkspace = process.env[EXTERNAL_WORKSPACE_ENV]?.trim();
 const READY_TIMEOUT_MS = 180_000;

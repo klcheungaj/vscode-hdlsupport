@@ -6,7 +6,7 @@ Vitest unit + fake-server suites pass, yet real projects hit a wall: diagnostics
 publish fine, but hover / definition / completion / documentSymbols /
 semanticTokens return EMPTY and `verilog.instantiateModule` says
 "No modules found". The suites here reproduce production against the REAL
-staged binary (`server/linux-x64/llg_ls`) over raw Content-Length-framed
+staged binary (`server/<platform>-<arch>/llg_ls`) over raw Content-Length-framed
 JSON-RPC stdio — exactly what VS Code + vscode-languageclient send:
 initializationOptions `{ llg: { protocolVersion: 1, configFiles: [...] } }`,
 one `didOpen`, project-wide `publishDiagnostics`, then direct requests.

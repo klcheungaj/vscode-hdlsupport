@@ -1,13 +1,12 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import { pathToFileURL } from 'url';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CHILD_SV_TEXT, computeTreeChecksum, createWorkspaceFixture, LLG_TOML_TEXT, listTmpLlgShadowDirs, positionAt, TOP_SV_TEXT, type WorkspaceFixture } from './fixtures/workspace';
 import { LspStdioClient, type LspNotification } from './helpers/lspClient';
+import { stagedServerPath } from '../support/stagedServer';
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
-const SERVER_BIN = path.join(REPO_ROOT, 'server', 'linux-x64', 'llg_ls');
+const SERVER_BIN = stagedServerPath('llg_ls');
 
 const READY_TIMEOUT_MS = 90_000;
 const DIAGNOSTICS_TIMEOUT_MS = 90_000;

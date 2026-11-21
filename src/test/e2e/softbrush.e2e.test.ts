@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 import * as fs from 'fs';
-import * as path from 'path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { tokenize } from '../syntaxes/grammarHarness';
 import { TCL_HIGHLIGHT_SOURCES } from './fixtures/tclHighlighting';
 import { LspStdioClient } from './helpers/lspClient';
+import { stagedServerPath } from '../support/stagedServer';
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
-const SERVER_BIN = path.join(REPO_ROOT, 'server', 'linux-x64', 'softbrush_ls');
+const SERVER_BIN = stagedServerPath('softbrush_ls');
 const REQUEST_TIMEOUT_MS = 30_000;
 const DIAGNOSTICS_TIMEOUT_MS = 30_000;
 

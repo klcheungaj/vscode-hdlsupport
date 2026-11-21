@@ -113,40 +113,73 @@ jobs:
         run: rm -rf playwright-report test-results ci-artifacts
 
   real-server-and-package:
-    name: Real servers, raw stdio, and package contract (Linux)
-    runs-on: ubuntu-latest
+    name: Real servers (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux-x64 }
+          - { os: ubuntu-24.04-arm, target: linux-arm64 }
+          - { os: macos-latest, target: darwin-arm64 }
+          - { os: windows-latest, target: win32-x64 }
+          - { os: windows-11-arm, target: win32-arm64 }
+    env:
+      HDLSUPPORT_E2E_DISABLE_GPU: '1'
+      HDLSUPPORT_E2E_VSCODE_VERSION: stable
     steps:
       # Servers are downloaded from pinned, checksum-verified GitHub releases
-      # by the stage scripts.
+      # by the stage scripts, for the runner's own target.
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm ci
-      - run: npm run build
+      - name: Cache VS Code test downloads
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .vscode-test
+          key: ${{ runner.os }}-${{ runner.arch }}-node22-vscode-stable-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-node22-vscode-stable-
       - name: Install Linux package and real-host prerequisites
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y binutils unzip xvfb libgtk-3-0 libnss3 libgbm1 libxss1 libxshmfence1 libdrm2 libx11-xcb1 libxcb-dri3-0
           sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
-      - run: npm run package:linux-x64
-      - run: npm run test:unit
-      - run: REQUIRE_LLG=1 REQUIRE_SOFTBRUSH=1 npm run test:contract
-      - run: npm run test:package
+      - run: npm ci
+      - run: npm run build
+      - name: Stage the ${{ matrix.target }} servers
+        shell: bash
+        run: |
+          npm run stage:server -- --target "${{ matrix.target }}"
+          npm run stage:softbrush -- --target "${{ matrix.target }}"
+      - name: Run raw-stdio contracts against the real servers
+        shell: bash
+        run: REQUIRE_LLG=1 REQUIRE_SOFTBRUSH=1 npm run test:contract
       - name: Verify real llg diagnostics in VS Code
-        env:
-          HDLSUPPORT_E2E_DISABLE_GPU: '1'
-        run: xvfb-run -a npm run test:e2e:real-server-host
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e:real-server-host; else npm run test:e2e:real-server-host; fi
       - name: Verify real Softbrush diagnostics in VS Code
-        env:
-          HDLSUPPORT_E2E_DISABLE_GPU: '1'
-        run: xvfb-run -a npm run test:e2e:softbrush-host
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e:softbrush-host; else npm run test:e2e:softbrush-host; fi
 
+      # Archive validation (static linkage, mimalloc) stays on linux-x64; the
+      # release workflow checks the other targets' archives.
+      - name: Build and verify the Linux x64 VSIX
+        if: matrix.target == 'linux-x64'
+        run: |
+          npm run package:linux-x64
+          npm run test:package
       - name: Create package checksum
+        if: matrix.target == 'linux-x64'
         run: sha256sum hdl-support-linux-x64.vsix > hdl-support-linux-x64.vsix.sha256
       - name: Upload Linux contract artifacts
+        if: matrix.target == 'linux-x64'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-package-contract
