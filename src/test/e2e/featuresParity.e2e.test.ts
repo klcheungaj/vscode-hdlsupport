@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -15,6 +16,11 @@ import { LspStdioClient, type IndexedNotification } from './helpers/lspClient';
 import { stagedServerPath } from '../support/stagedServer';
 
 const SERVER_BIN = stagedServerPath('llg_ls');
+
+/** POSIX-separated path of a file URI relative to `projectDir`, on every platform. */
+function projectRelative(projectDir: string, uri: string): string {
+    return path.relative(projectDir, fileURLToPath(uri)).split(path.sep).join('/');
+}
 
 const READY_TIMEOUT_MS = 150_000;
 const DIAGNOSTICS_TIMEOUT_MS = 120_000;
@@ -298,7 +304,7 @@ describeIfBinary('llg production-parity features over a real-shaped repo (staged
         const evidence = [...latestPerUri.entries()]
             .sort(([a], [b]) => (a < b ? -1 : 1))
             .map(([uri, diagnostics]) => {
-                const relative = path.relative(fixture.projectDir, decodeURIComponent(uri.replace(/^file:\/\//, '')));
+                const relative = projectRelative(fixture.projectDir, uri);
                 const severities = diagnostics.map((diagnostic) => diagnostic.severity ?? 99);
                 const worst = severities.length === 0 ? '-' : String(Math.min(...severities));
                 const sample = diagnostics[0]?.message?.slice(0, 90) ?? '(clean)';
@@ -309,7 +315,7 @@ describeIfBinary('llg production-parity features over a real-shaped repo (staged
         expect(latestPerUri.size).toBeGreaterThanOrEqual(3);
         const covered = [...latestPerUri.keys()]
             .sort()
-            .map((uri) => path.relative(fixture.projectDir, decodeURIComponent(uri.replace(/^file:\/\//, ''))));
+            .map((uri) => projectRelative(fixture.projectDir, uri));
         expect(covered.join(', ')).toContain('rtl/top.sv');
         // At least one URI the user NEVER opened must be covered.
         expect(covered.some((relative) => relative !== 'rtl/top.sv')).toBe(true);
@@ -370,7 +376,7 @@ describeIfBinary('llg production-parity features over a real-shaped repo (staged
             const uris = locationUris(definition);
             expect(uris.length).toBeGreaterThan(0);
             expect(uris).toContain(fixture.ddrCtrlUri);
-            return `targets=${uris.map((uri) => path.relative(fixture.projectDir, decodeURIComponent(uri.replace(/^file:\/\//, '')))).join(', ')}`;
+            return `targets=${uris.map((uri) => projectRelative(fixture.projectDir, uri)).join(', ')}`;
         });
     });
 
