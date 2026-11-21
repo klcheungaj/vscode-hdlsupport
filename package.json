@@ -2,7 +2,7 @@
   "name": "hdl-support",
   "displayName": "HDL Support",
   "description": "Language support for Verilog, SystemVerilog, VHDL, Tcl, SDC and XDC",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "klcheungaj",
   "icon": "media/icon.png",
   "engines": {
