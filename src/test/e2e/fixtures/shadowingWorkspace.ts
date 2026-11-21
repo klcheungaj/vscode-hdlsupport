@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
+import { fixtureTempDir } from './workspace';
 
 let fixtureCounter = 0;
 
@@ -252,7 +252,7 @@ function fileUri(p: string): string {
  */
 export function createShadowingFixture(prefix = 'hdlsupport-shadow'): ShadowingFixture {
     fixtureCounter += 1;
-    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}-${process.pid}-${fixtureCounter}-`));
+    const baseDir = fs.mkdtempSync(path.join(fixtureTempDir(), `${prefix}-${process.pid}-${fixtureCounter}-`));
     const projectDir = path.join(baseDir, 'ws');
     fs.mkdirSync(projectDir, { recursive: true });
 

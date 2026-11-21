@@ -1,8 +1,8 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
+import { fixtureTempDir } from './workspace';
 
 export { computeTreeChecksum, positionAt } from './workspace';
 
@@ -327,7 +327,7 @@ export function createRealProjectFixture(options: RealProjectOptions = {}, prefi
     enforceFixtureInvariants();
 
     fixtureCounter += 1;
-    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}-${process.pid}-${fixtureCounter}-`));
+    const baseDir = fs.mkdtempSync(path.join(fixtureTempDir(), `${prefix}-${process.pid}-${fixtureCounter}-`));
     const projectDir = path.join(baseDir, 'proj');
     const rtlDir = path.join(projectDir, 'rtl');
     const subDir = path.join(rtlDir, 'sub');

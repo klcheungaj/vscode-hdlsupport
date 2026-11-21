@@ -76,6 +76,17 @@ function fileUri(p: string): string {
 }
 
 /**
+ * Parent directory for fixtures. On Windows, os.tmpdir() can be an 8.3 short
+ * path (C:\Users\RUNNER~1\...): pathToFileURL encodes its `~` as %7E while
+ * the server reports the literal `~`, so raw URI comparisons would differ.
+ * Expanding it to the long path keeps both sides identical. Other platforms
+ * keep os.tmpdir() so macOS socket paths under it stay short.
+ */
+export function fixtureTempDir(): string {
+    return process.platform === 'win32' ? fs.realpathSync.native(os.tmpdir()) : os.tmpdir();
+}
+
+/**
  * Builds a fresh read-only fixture workspace under os.tmpdir():
  *
  *   <base>/proj/llg.toml
@@ -87,7 +98,7 @@ function fileUri(p: string): string {
  */
 export function createWorkspaceFixture(prefix = 'hdlsupport-e2e'): WorkspaceFixture {
     fixtureCounter += 1;
-    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}-${process.pid}-${fixtureCounter}-`));
+    const baseDir = fs.mkdtempSync(path.join(fixtureTempDir(), `${prefix}-${process.pid}-${fixtureCounter}-`));
     const projectDir = path.join(baseDir, 'proj');
     fs.mkdirSync(projectDir, { recursive: true });
 
