@@ -10,9 +10,9 @@ import {
     type RealProjectFixture,
 } from './fixtures/realProject';
 import { LspStdioClient } from './helpers/lspClient';
-import { stagedServerPath } from '../support/stagedServer';
+import { bundledServerPath } from '../support/extensionUnderTest';
 
-const SERVER_BIN = stagedServerPath('llg_ls');
+const SERVER_BIN = bundledServerPath('llg_ls');
 
 const READY_TIMEOUT_MS = 150_000;
 const REQUEST_TIMEOUT_MS = 90_000;

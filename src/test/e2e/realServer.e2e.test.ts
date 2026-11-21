@@ -4,9 +4,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CHILD_SV_TEXT, computeTreeChecksum, createWorkspaceFixture, LLG_TOML_TEXT, listTmpLlgShadowDirs, positionAt, TOP_SV_TEXT, type WorkspaceFixture } from './fixtures/workspace';
 import { LspStdioClient, type LspNotification } from './helpers/lspClient';
-import { stagedServerPath } from '../support/stagedServer';
+import { bundledServerPath } from '../support/extensionUnderTest';
 
-const SERVER_BIN = stagedServerPath('llg_ls');
+const SERVER_BIN = bundledServerPath('llg_ls');
 
 const READY_TIMEOUT_MS = 90_000;
 const DIAGNOSTICS_TIMEOUT_MS = 90_000;

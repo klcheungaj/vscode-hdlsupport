@@ -13,9 +13,9 @@ import {
 } from './fixtures/realProject';
 import { listTmpLlgShadowDirs } from './fixtures/workspace';
 import { LspStdioClient, type IndexedNotification } from './helpers/lspClient';
-import { stagedServerPath } from '../support/stagedServer';
+import { bundledServerPath } from '../support/extensionUnderTest';
 
-const SERVER_BIN = stagedServerPath('llg_ls');
+const SERVER_BIN = bundledServerPath('llg_ls');
 
 /** POSIX-separated path of a file URI relative to `projectDir`, on every platform. */
 function projectRelative(projectDir: string, uri: string): string {

@@ -10,11 +10,11 @@ import { persistDiagnosticDirectory } from '../../../support/artifacts';
 import { requireDisplayForGuiTest } from '../../../support/display';
 import { VSCODE_DOWNLOAD_TIMEOUT_MS } from '../../../support/vscodeDownload';
 import { terminateProcessTree } from '../../../support/process';
-import { stagedServerPath } from '../../../support/stagedServer';
+import { bundledServerPath, extensionUnderTestPath } from '../../../support/extensionUnderTest';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
 const COMPILED_SUITE = path.join(__dirname, 'realSoftbrushHostIndex.js');
-const SERVER_PATH = stagedServerPath('softbrush_ls');
+const SERVER_PATH = bundledServerPath('softbrush_ls');
 const HOST_WORKER_ARGUMENT = '--hdlsupport-real-softbrush-host-worker';
 const HOST_WORKER_TIMEOUT_MS = 180_000;
 const SDC_TEXT = [
@@ -48,7 +48,9 @@ function hostOptions(baseDir: string, projectDir: string, sourcePath: string): T
         timeout: VSCODE_DOWNLOAD_TIMEOUT_MS,
         ...(configuredExecutable ? { vscodeExecutablePath: path.resolve(configuredExecutable) } : {}),
         ...(configuredCache ? { cachePath: path.resolve(configuredCache) } : {}),
-        extensionDevelopmentPath: REPO_ROOT,
+        // The unpacked VSIX in CI, so the production bundle and packaged
+        // servers are what VS Code loads.
+        extensionDevelopmentPath: extensionUnderTestPath(),
         extensionTestsPath: COMPILED_SUITE,
         launchArgs: [
             ...(process.env.HDLSUPPORT_E2E_DISABLE_GPU === '1'

@@ -15,9 +15,13 @@ const contractVirtualVscodeModule = {
     },
 };
 
-// Same host-target path as src/test/support/stagedServer.ts.
+// Same path as bundledServerPath() in src/test/support/extensionUnderTest.ts:
+// the unpacked VSIX when HDLSUPPORT_E2E_EXTENSION_PATH is set, else the checkout.
 const serverBinary = path.resolve(
-    __dirname, 'server', `${process.platform}-${process.arch}`, process.platform === 'win32' ? 'llg_ls.exe' : 'llg_ls',
+    process.env.HDLSUPPORT_E2E_EXTENSION_PATH?.trim() || __dirname,
+    'server',
+    `${process.platform}-${process.arch}`,
+    process.platform === 'win32' ? 'llg_ls.exe' : 'llg_ls',
 );
 
 function isEnabled(value: string | undefined): boolean {

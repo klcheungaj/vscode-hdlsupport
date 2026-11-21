@@ -6,9 +6,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { tokenize } from '../syntaxes/grammarHarness';
 import { TCL_HIGHLIGHT_SOURCES } from './fixtures/tclHighlighting';
 import { LspStdioClient } from './helpers/lspClient';
-import { stagedServerPath } from '../support/stagedServer';
+import { bundledServerPath } from '../support/extensionUnderTest';
 
-const SERVER_BIN = stagedServerPath('softbrush_ls');
+const SERVER_BIN = bundledServerPath('softbrush_ls');
 const REQUEST_TIMEOUT_MS = 30_000;
 const DIAGNOSTICS_TIMEOUT_MS = 30_000;
 
