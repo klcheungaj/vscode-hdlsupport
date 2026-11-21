@@ -14,7 +14,6 @@
 # included by vsce itself; LICENSE is renamed to LICENSE.txt at pack time)
 !package.json
 !README.md
-!CHANGELOG.md
 !LICENSE
 
 # Vite bundle + its generated license notice (no .map)

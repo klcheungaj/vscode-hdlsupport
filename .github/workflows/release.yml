@@ -89,18 +89,6 @@ jobs:
             echo "requested version $requested_version does not match package.json $package_version" >&2
             exit 1
           fi
-          changelog_prefix="## [${requested_version}] - "
-          mapfile -t changelog_lines < <(grep -F "$changelog_prefix" CHANGELOG.md || true)
-          if [[ "${#changelog_lines[@]}" -ne 1 ]]; then
-            echo "CHANGELOG.md must have exactly one dated section for ${requested_version}" >&2
-            exit 1
-          fi
-          release_date="${changelog_lines[0]#"$changelog_prefix"}"
-          normalized_date=$(date -u -d "$release_date" +%F 2>/dev/null || true)
-          if [[ ! "$release_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ || "$normalized_date" != "$release_date" ]]; then
-            echo "CHANGELOG.md section for ${requested_version} must use a valid YYYY-MM-DD date" >&2
-            exit 1
-          fi
 
           git fetch --no-tags origin "$DEFAULT_BRANCH"
           target_sha=$(git rev-parse "${GITHUB_SHA}^{commit}")
