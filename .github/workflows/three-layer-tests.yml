@@ -137,7 +137,6 @@ jobs:
     env:
       HDLSUPPORT_E2E_DISABLE_GPU: '1'
       HDLSUPPORT_E2E_VSCODE_VERSION: stable
-      VSIX: hdl-support-${{ matrix.target }}.vsix
     steps:
       # Each runner builds its own platform's VSIX (servers come from the
       # pinned, checksum-verified GitHub releases) and every real-server
@@ -162,8 +161,19 @@ jobs:
           sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
       - run: npm ci
       - run: npm run build
+      # Writes hdl-support-<version>-<os>-<arch>.vsix, the name it is
+      # released under.
       - name: Build the ${{ matrix.target }} VSIX
-        run: npm run package:target -- --target "${{ matrix.target }}"
+        shell: bash
+        run: |
+          npm run package:target -- --target "${{ matrix.target }}"
+          shopt -s nullglob
+          packages=(hdl-support-*.vsix)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "expected exactly one VSIX, found: ${packages[*]:-none}" >&2
+            exit 1
+          fi
+          echo "VSIX=${packages[0]}" >> "$GITHUB_ENV"
       - name: Unpack the VSIX as the extension under test
         id: unpack
         shell: bash
@@ -334,8 +344,8 @@ jobs:
           merge-multiple: true
           path: tested
 
-      # Release files use the <os>-<arch> names of the Lapligence and
-      # Softbrush release archives. Re-running this job replaces them.
+      # Uploads the tested files exactly as built, under their own names
+      # (no display labels). Re-running this job replaces them.
       - name: Upload the VSIXes and checksums
         shell: bash
         env:
@@ -345,17 +355,16 @@ jobs:
           RELEASE_VERSION: ${{ needs.release-metadata.outputs.version }}
         run: |
           set -euo pipefail
-          (cd tested && sha256sum --check *.sha256)
-          mkdir release-assets
+          cd tested
           files=()
-          for entry in 'linux-x64:linux-x86_64:Linux x64' 'linux-arm64:linux-arm64:Linux arm64' \
-                       'darwin-arm64:macos-arm64:macOS Apple silicon' 'win32-x64:windows-x86_64:Windows x64' \
-                       'win32-arm64:windows-arm64:Windows arm64'; do
-            IFS=: read -r target platform label <<< "$entry"
+          for platform in linux-x86_64 linux-arm64 macos-arm64 windows-x86_64 windows-arm64; do
             asset="hdl-support-${RELEASE_VERSION}-${platform}.vsix"
-            cp "tested/hdl-support-${target}.vsix" "release-assets/${asset}"
-            (cd release-assets && sha256sum "$asset" > "${asset}.sha256" && sha256sum --check "${asset}.sha256")
-            files+=("release-assets/${asset}#${label} VSIX" "release-assets/${asset}.sha256#${label} SHA-256 checksum")
+            if [[ ! -f "$asset" || ! -f "${asset}.sha256" ]]; then
+              echo "missing tested VSIX for ${platform}: ${asset}" >&2
+              exit 1
+            fi
+            sha256sum --check "${asset}.sha256"
+            files+=("$asset" "${asset}.sha256")
           done
           gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
           echo "Attached VSIXes to [$RELEASE_TAG]($(gh release view "$RELEASE_TAG" --json url --jq .url))" >> "$GITHUB_STEP_SUMMARY"

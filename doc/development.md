@@ -27,10 +27,14 @@ target: `linux-x64`, `linux-arm64`, `darwin-arm64`, `win32-x64`, or
 `win32-arm64`. Stage scripts take `-- --target <target>` (default: the host's
 target, e.g. `darwin-arm64` on Apple silicon).
 
+Packages are named `hdl-support-<version>-<os>-<arch>.vsix`, matching the
+Lapligence and Softbrush release archives (`linux-x86_64`, `linux-arm64`,
+`macos-arm64`, `windows-x86_64`, `windows-arm64`):
+
 ```sh
-npm run package:linux-x64                          # → hdl-support-linux-x64.vsix
-code --install-extension hdl-support-linux-x64.vsix
-npm run package:target -- --target win32-x64       # → hdl-support-win32-x64.vsix
+npm run package:linux-x64                          # → hdl-support-<version>-linux-x86_64.vsix
+code --install-extension hdl-support-*-linux-x86_64.vsix
+npm run package:target -- --target win32-x64       # → hdl-support-<version>-windows-x86_64.vsix
 HDLSUPPORT_PACKAGE_TARGET=win32-x64 npm run test:package
 ```
 
@@ -71,7 +75,7 @@ To test a built package the way CI does:
 
 ```sh
 npm run package:linux-x64
-rm -rf /tmp/hdl-vsix && unzip -q hdl-support-linux-x64.vsix -d /tmp/hdl-vsix
+rm -rf /tmp/hdl-vsix && unzip -q hdl-support-*-linux-x86_64.vsix -d /tmp/hdl-vsix
 export HDLSUPPORT_E2E_EXTENSION_PATH=/tmp/hdl-vsix/extension
 REQUIRE_LLG=1 REQUIRE_SOFTBRUSH=1 npm run test:contract
 HDLSUPPORT_E2E_DISABLE_GPU=1 xvfb-run -a npm run test:e2e:real-server-host

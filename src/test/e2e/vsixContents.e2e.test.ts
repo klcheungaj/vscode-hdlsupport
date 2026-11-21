@@ -6,7 +6,7 @@ import * as os from 'os';
 import { assertExecutableLinkage } from '../support/executableLinkage';
 import { assertMimallocProtocolAllocations } from '../support/mimalloc';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { BUNDLED_TARGETS, bundledBinaryName, type BundledTarget } from '../../languageServer/resolve';
+import { BUNDLED_TARGETS, bundledBinaryName, vsixFileName, type BundledTarget } from '../../languageServer/resolve';
 
 function packageTarget(): BundledTarget {
     const value = process.env.HDLSUPPORT_PACKAGE_TARGET ?? 'linux-x64';
@@ -21,7 +21,14 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const TARGET = packageTarget();
 const TARGET_PLATFORM = TARGET.split('-')[0];
 const IS_HOST_TARGET = TARGET === `${process.platform}-${process.arch}`;
-const VSIX_PATH = path.join(REPO_ROOT, `hdl-support-${TARGET}.vsix`);
+const VSIX_NAME = vsixFileName(
+    (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')) as { version: string }).version,
+    TARGET,
+);
+const VSIX_PATH = path.join(REPO_ROOT, VSIX_NAME);
+if (!fs.existsSync(VSIX_PATH)) {
+    throw new Error(`no packaged VSIX was found at ${VSIX_PATH}; run npm run package:target -- --target ${TARGET} first`);
+}
 const SERVER_BINARIES = ['llg_ls', 'softbrush_ls'].map((binary) => bundledBinaryName(binary, TARGET_PLATFORM));
 const SERVER_PATHS = SERVER_BINARIES.map((binary) => `server/${TARGET}/${binary}`);
 const ARCHIVE_SERVER_ENTRIES = SERVER_PATHS.map((packagedPath) => `extension/${packagedPath}`);
@@ -30,7 +37,7 @@ const VSCE_LIST_TIMEOUT_MS = 120_000;
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
 /**
- * Packaging contract: whatever ships in hdl-support-<target>.vsix must include
+ * Packaging contract: whatever ships in hdl-support-<version>-<os>-<arch>.vsix must include
  * both language servers for that one target and the runtime assets, and must
  * exclude sources, other targets' servers, build artifacts and legacy indexer
  * leftovers. HDLSUPPORT_PACKAGE_TARGET selects the target (default linux-x64).
@@ -125,7 +132,7 @@ function normalizeEntry(entry: string): string {
     return normalized;
 }
 
-describe(`[packaging contract] hdl-support-${TARGET}.vsix contents`, () => {
+describe(`[packaging contract] ${VSIX_NAME} contents`, () => {
     let extractedDirectory: string | undefined;
     const extractedServers = new Map<string, string>();
     let files: string[];

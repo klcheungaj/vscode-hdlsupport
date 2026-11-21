@@ -11,7 +11,7 @@ Source map and architecture for `src/`. Repo-wide rules are in the root
     requests, nested `llg.toml` roots).
   - `softbrushClient.ts`: lazy Softbrush client.
   - `commands.ts`, `configCommand.ts`: restart/output/dump/open-config commands.
-  - Pure (no `vscode`): `resolve.ts` (executable resolution), `initOptions.ts`
+  - Pure (no `vscode`): `resolve.ts` (executable resolution, bundled targets, VSIX names), `initOptions.ts`
     (init payload, effective config path), `restartPolicy.ts`,
     `llgConfigDiscovery.ts` (closest `llg.toml`, nested roots).
 - `hierarchy/`: HDL Modules tree and Module Contents. `moduleExplorer.ts`
@@ -33,7 +33,7 @@ Source map and architecture for `src/`. Repo-wide rules are in the root
   Playwright (`e2e/playwright`) suites.
 - `../scripts/`: `stage-*.ts` download pinned server releases into
   `server/<target>/` (`--target`, default the host's target); `package-target.ts`
-  stages both and builds `hdl-support-<target>.vsix`; `sync-tool-profiles.ts`
+  stages both and builds `hdl-support-<version>-<os>-<arch>.vsix`; `sync-tool-profiles.ts`
   generates linter and formatter settings.
 
 ## Architecture Invariants

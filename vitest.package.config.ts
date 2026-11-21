@@ -1,20 +1,10 @@
 {
-const path = require('path') as typeof import('path');
 const { defineConfig: definePackageVitestConfig } = require('vitest/config') as typeof import('vitest/config');
 
-// HDLSUPPORT_PACKAGE_TARGET selects which platform VSIX to validate.
-const packageTarget = process.env.HDLSUPPORT_PACKAGE_TARGET ?? 'linux-x64';
-const packageArchive = path.resolve(__dirname, `hdl-support-${packageTarget}.vsix`);
-
-// This lane is intentionally explicit: it validates the artifact produced by
-// `npm run package:target -- --target <target>`, rather than making `npm test`
-// depend on one.
-if (!require('fs').existsSync(packageArchive)) {
-    throw new Error(
-        `no packaged VSIX was found at ${packageArchive}; `
-        + `run npm run package:target -- --target ${packageTarget} before the package contract.`,
-    );
-}
+// This lane is intentionally explicit: it validates the VSIX produced by
+// `npm run package:target -- --target <target>` (HDLSUPPORT_PACKAGE_TARGET,
+// default linux-x64), rather than making `npm test` depend on one. The suite
+// itself fails with a clear error when that VSIX is missing.
 
 module.exports = definePackageVitestConfig({
     test: {

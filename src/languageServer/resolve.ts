@@ -21,6 +21,20 @@ export type ResolveResult =
 export const BUNDLED_TARGETS = ['linux-x64', 'linux-arm64', 'darwin-arm64', 'win32-x64', 'win32-arm64'] as const;
 export type BundledTarget = typeof BUNDLED_TARGETS[number];
 
+/** `<os>-<arch>` names the Lapligence and Softbrush release archives use for each target. */
+const ARCHIVE_PLATFORM_NAMES: Record<BundledTarget, string> = {
+    ['linux-x64']: 'linux-x86_64',
+    ['linux-arm64']: 'linux-arm64',
+    ['darwin-arm64']: 'macos-arm64',
+    ['win32-x64']: 'windows-x86_64',
+    ['win32-arm64']: 'windows-arm64',
+};
+
+/** Packaged VSIX file name, e.g. `hdl-support-0.4.1-linux-x86_64.vsix`. */
+export function vsixFileName(version: string, target: BundledTarget): string {
+    return `hdl-support-${version}-${ARCHIVE_PLATFORM_NAMES[target]}.vsix`;
+}
+
 function isBundledTarget(target: string): target is BundledTarget {
     return (BUNDLED_TARGETS as readonly string[]).includes(target);
 }

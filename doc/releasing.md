@@ -82,10 +82,11 @@ all of the following:
 `Attach VSIXes to the release` needs every other job in the run, so nothing is
 attached unless quality, GUI, real-server, and package checks all pass on
 every platform. It downloads the run's `vsix-<target>` artifacts, verifies
-their checksums, renames them to the `<os>-<arch>` names of the Lapligence and
-Softbrush release archives (`hdl-support-<version>-linux-x86_64.vsix`,
-`-linux-arm64`, `-macos-arm64`, `-windows-x86_64`, `-windows-arm64`), and
-uploads each with a SHA-256 file. Re-running the job replaces those files.
+their checksums, and uploads each VSIX and its `.sha256` file unchanged, under
+the name it was built with. Packaging already uses the `<os>-<arch>` names of
+the Lapligence and Softbrush release archives
+(`hdl-support-<version>-linux-x86_64.vsix`, `-linux-arm64`, `-macos-arm64`,
+`-windows-x86_64`, `-windows-arm64`). Re-running the job replaces those files.
 
 Every other job has read-only repository permission; only the attach job has
 `contents: write`.
@@ -157,7 +158,6 @@ HDLSUPPORT_E2E_DISABLE_GPU=1 xvfb-run -a npm run test:e2e:softbrush-host
    and `windows-arm64`.
 
 Until that run finishes (or if it fails) the release has no VSIX files.
-Locally built packages keep the VS Code target name (`hdl-support-<target>.vsix`).
 
 ## Verify or recover a release
 

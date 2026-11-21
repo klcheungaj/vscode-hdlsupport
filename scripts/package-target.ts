@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 // Packages a platform-specific VSIX: stages both pinned language servers for
 // one VS Code target and runs `vsce package --target <target>`, producing
-// hdl-support-<target>.vsix in the repository root.
+// hdl-support-<version>-<os>-<arch>.vsix (the Lapligence/Softbrush archive
+// naming) in the repository root.
 //
 // Usage: ts-node scripts/package-target.ts [--target <t>]   (default: this host's target)
 
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { vsixFileName } from '../src/languageServer/resolve';
 import { stageRelease, targetFromArgv } from './serverRelease';
 import { LLG_RELEASE } from './stage-server';
 import { SOFTBRUSH_RELEASE } from './stage-softbrush';
@@ -19,7 +22,8 @@ async function packageTarget(): Promise<void> {
   await stageRelease(SOFTBRUSH_RELEASE, target);
 
   const vsce = join(dirname(require.resolve('@vscode/vsce/package.json')), 'vsce');
-  const out = `hdl-support-${target}.vsix`;
+  const { version } = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as { version: string };
+  const out = vsixFileName(version, target);
   const result = spawnSync(process.execPath, [vsce, 'package', '--target', target, '--out', out], {
     cwd: repoRoot,
     stdio: 'inherit',
