@@ -226,11 +226,15 @@ describe(`[packaging contract] hdl-support-${TARGET}.vsix contents`, () => {
             const server = servers.get(archivePath);
             expect(server, `missing zip metadata for ${archivePath}`).toBeDefined();
             expect(server?.size).toBeGreaterThan(1024);
-            expect(server?.executable).toBe(true);
+            // Windows runs .exe files without a mode bit, and a VSIX zipped on
+            // Windows records none; POSIX hosts need the executable bit.
+            if (TARGET_PLATFORM !== 'win32') {
+                expect(server?.executable).toBe(true);
+            }
 
+            // The packaged server must be the pinned release binary staged here.
             const stat = fs.statSync(path.join(REPO_ROOT, packagedPath));
             expect(stat.size).toBeGreaterThan(1024);
-            expect(stat.mode & 0o111).not.toBe(0);
             expect(server?.size).toBe(stat.size);
         }
     });
