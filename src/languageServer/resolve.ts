@@ -17,8 +17,19 @@ export type ResolveResult =
     | { kind: 'bundled'; path: string }
     | { kind: 'unsupported'; error: string };
 
-const SUPPORTED_PLATFORM = 'linux';
-const SUPPORTED_ARCH = 'x64';
+/** VS Code target platforms that ship a bundled server in `server/<target>/`. */
+export const BUNDLED_TARGETS = ['linux-x64', 'linux-arm64', 'darwin-arm64', 'win32-x64', 'win32-arm64'] as const;
+export type BundledTarget = typeof BUNDLED_TARGETS[number];
+
+function isBundledTarget(target: string): target is BundledTarget {
+    return (BUNDLED_TARGETS as readonly string[]).includes(target);
+}
+
+/** File name of a bundled server executable for `platform` (`.exe` on Windows). */
+export function bundledBinaryName(binary: string, platform: string): string {
+    return platform === 'win32' ? `${binary}.exe` : binary;
+}
+
 const PATH_SETTING = 'hdlsupport.llg.path';
 
 export interface ServerIdentity {
@@ -46,16 +57,17 @@ export function resolveServerExecutable(input: ResolveInput, identity = LLG_IDEN
         }
         return { kind: 'override', path: input.settingPath };
     }
-    if (input.platform === SUPPORTED_PLATFORM && input.arch === SUPPORTED_ARCH) {
+    const target = `${input.platform}-${input.arch}`;
+    if (isBundledTarget(target)) {
         return {
             kind: 'bundled',
-            path: join(input.extensionUri, 'server', `${SUPPORTED_PLATFORM}-${SUPPORTED_ARCH}`, identity.binary),
+            path: join(input.extensionUri, 'server', target, bundledBinaryName(identity.binary, input.platform)),
         };
     }
     return {
         kind: 'unsupported',
         error:
-            `The bundled ${identity.name} language server only supports ${SUPPORTED_PLATFORM}-${SUPPORTED_ARCH}, ` +
+            `The bundled ${identity.name} language server only supports ${BUNDLED_TARGETS.join(', ')}, ` +
             `but this host is ${input.platform}-${input.arch}. Install ${identity.name} and set '${identity.pathSetting}' ` +
             `to its absolute path or to an executable name on PATH to use the language server here.`,
     };

@@ -86,29 +86,38 @@ describe('resolveServerExecutable', () => {
         expect(result).toEqual({ kind: 'override', path: 'tools/bin/llg' });
     });
 
-    it('resolves the bundled linux-x64 binary on linux x64', () => {
-        const result = resolveServerExecutable({
-            settingPath: '',
-            platform: LINUX_X64.platform,
-            arch: LINUX_X64.arch,
-            extensionUri: LINUX_X64.extensionUri,
-        });
-        expect(result).toEqual({
-            kind: 'bundled',
-            path: path.join('/extensions/hdl-support', 'server', 'linux-x64', 'llg_ls'),
+    describe.each([
+        ['linux', 'x64', 'llg_ls'],
+        ['linux', 'arm64', 'llg_ls'],
+        ['darwin', 'arm64', 'llg_ls'],
+        ['win32', 'x64', 'llg_ls.exe'],
+        ['win32', 'arm64', 'llg_ls.exe'],
+    ])('bundled host %s-%s', (platform, arch, binary) => {
+        it('resolves the binary staged for that target', () => {
+            const result = resolveServerExecutable({
+                settingPath: '',
+                platform,
+                arch,
+                extensionUri: LINUX_X64.extensionUri,
+            });
+            expect(result).toEqual({
+                kind: 'bundled',
+                path: path.join('/extensions/hdl-support', 'server', `${platform}-${arch}`, binary),
+            });
         });
     });
 
     describe.each([
-        ['darwin', 'arm64'],
-        ['win32', 'x64'],
-        ['linux', 'arm64'],
+        ['darwin', 'x64'],
+        ['linux', 'ia32'],
+        ['freebsd', 'x64'],
     ])('unsupported host %s-%s', (platform, arch) => {
         it('reports an actionable unsupported error', () => {
             const result = resolveServerExecutable({ settingPath: '', platform, arch, extensionUri: '/ext' });
             expect(result.kind).toBe('unsupported');
             if (result.kind === 'unsupported') {
                 expect(result.error).toContain('hdlsupport.llg.path');
+                expect(result.error).toContain(`${platform}-${arch}`);
                 expect(result.error).toContain('linux-x64');
             }
         });
@@ -135,7 +144,7 @@ describe('resolveServerExecutable', () => {
             }, SOFTBRUSH_IDENTITY);
             const unsupportedHost = resolveServerExecutable({
                 settingPath: '',
-                platform: 'win32',
+                platform: 'darwin',
                 arch: 'x64',
                 extensionUri: '/ext',
             }, SOFTBRUSH_IDENTITY);
