@@ -12,13 +12,27 @@ const DEFAULT_TIMEOUT_MS = 5_000;
 // when it is fast.
 const WINDOWS_TREE_QUERY_TIMEOUT_MS = 60_000;
 const DEFAULT_POLL_INTERVAL_MS = 100;
+// Slack between a recorded launch time and the process's real creation time
+// (startup before the timestamp is written, clock granularity).
+const LAUNCH_TIME_SLACK_MS = 30_000;
 
 export interface TerminateProcessOptions {
     readonly timeoutMs?: number;
     readonly pollIntervalMs?: number;
     /** Set when the process was launched as a detached POSIX process group. */
     readonly processGroup?: boolean;
+    /**
+     * When the process was launched. On Windows, processes created before it
+     * are never treated as its descendants even if their stale
+     * ParentProcessId matches a reused PID.
+     */
+    readonly startedAt?: Date;
     readonly onWarning?: (message: string) => void;
+}
+
+export interface RecordedLaunch {
+    readonly pid: number;
+    readonly startedAt?: Date;
 }
 
 /** Returns the PIDs that could not be confirmed dead after bounded cleanup. */
@@ -83,7 +97,7 @@ export async function terminateProcessTree(
 
     let windowsTree: WindowsProcessTree | undefined;
     if (process.platform === 'win32') {
-        windowsTree = await readWindowsProcessTree(pid, timeoutMs, options.onWarning);
+        windowsTree = await readWindowsProcessTree(pid, timeoutMs, options.onWarning, options.startedAt);
         if (!leaderAlive && windowsTree.descendants.length === 0) {
             // A failed process query cannot prove that a dead worker has no
             // surviving descendants, so report cleanup failure rather than
@@ -171,11 +185,24 @@ interface WindowsProcessTree {
  * not expose trailing arguments as `$args` (the root would silently become 0
  * and list the System processes), so the PID, a validated positive integer, is
  * written into the script itself.
+ *
+ * Windows never updates ParentProcessId when a parent exits, and PIDs are
+ * reused: boot-time csrss.exe/winlogon.exe still name their long-gone session
+ * smss.exe as parent. A child is therefore only followed when it was created
+ * no earlier than its parent: the parent's own CreationDate while it runs,
+ * else `startedAt` (less a startup slack) for a root that already exited.
  */
-export function windowsProcessTreeScript(pid: number): string {
+export function windowsProcessTreeScript(pid: number, startedAt?: Date): string {
+    const notBefore = startedAt === undefined
+        ? '$null'
+        : `[DateTime]::Parse('${new Date(startedAt.getTime() - LAUNCH_TIME_SLACK_MS).toISOString()}', `
+            + '[Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()';
     return [
         `$root = ${pid}`,
-        '$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Select-Object ProcessId, ParentProcessId)',
+        `$notBefore = ${notBefore}`,
+        '$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Select-Object ProcessId, ParentProcessId, CreationDate)',
+        '$created = @{}',
+        'foreach ($entry in $all) { if ($entry.CreationDate) { $created[[int]$entry.ProcessId] = $entry.CreationDate.ToUniversalTime() } }',
         '$pending = New-Object System.Collections.ArrayList',
         '[void]$pending.Add($root)',
         '$seen = @{}',
@@ -183,13 +210,14 @@ export function windowsProcessTreeScript(pid: number): string {
         'while ($pending.Count -gt 0) {',
         '  $parent = [int]$pending[0]',
         '  $pending.RemoveAt(0)',
+        '  $bound = if ($created.ContainsKey($parent)) { $created[$parent] } else { $notBefore }',
         '  foreach ($candidate in $all) {',
         '    $child = [int]$candidate.ProcessId',
-        '    if ([int]$candidate.ParentProcessId -eq $parent -and -not $seen.ContainsKey($child)) {',
-        '      $seen[$child] = $true',
-        '      [void]$pending.Add($child)',
-        '      Write-Output $child',
-        '    }',
+        '    if ([int]$candidate.ParentProcessId -ne $parent -or $seen.ContainsKey($child)) { continue }',
+        '    if ($null -ne $bound -and (-not $created.ContainsKey($child) -or $created[$child] -lt $bound)) { continue }',
+        '    $seen[$child] = $true',
+        '    [void]$pending.Add($child)',
+        '    Write-Output $child',
         '  }',
         '}',
     ].join(';');
@@ -199,10 +227,11 @@ async function readWindowsProcessTree(
     pid: number,
     timeoutMs: number,
     onWarning: ((message: string) => void) | undefined,
+    startedAt: Date | undefined,
 ): Promise<WindowsProcessTree> {
     // PowerShell/CIM is present on supported Windows runners and lets us
     // retain descendant PIDs even if the root exits before taskkill starts.
-    const script = windowsProcessTreeScript(pid);
+    const script = windowsProcessTreeScript(pid, startedAt);
     const queryTimeoutMs = Math.max(timeoutMs, WINDOWS_TREE_QUERY_TIMEOUT_MS);
     try {
         const result = await execFileAsync('powershell.exe', [
@@ -251,11 +280,10 @@ export async function terminateRecordedProcesses(
     if (controlDir === '') {
         return [];
     }
-    const pids = readRecordedPids(controlDir);
     const failures: number[] = [];
-    for (const pid of pids) {
-        if (!await terminateProcessTree(pid, options)) {
-            failures.push(pid);
+    for (const launch of readRecordedLaunches(controlDir)) {
+        if (!await terminateProcessTree(launch.pid, { ...options, startedAt: launch.startedAt })) {
+            failures.push(launch.pid);
         }
     }
     return failures;
@@ -263,32 +291,43 @@ export async function terminateRecordedProcesses(
 
 /** Reads both the current PID and historical launch PIDs from a fixture directory. */
 export function readRecordedPids(controlDir: string): number[] {
+    return readRecordedLaunches(controlDir).map((launch) => launch.pid);
+}
+
+/**
+ * Recorded fake-server launches, current PID first, then history newest
+ * first. `launches.log` lines are `<pid> <ISO launch time>`; the time is kept
+ * when it parses.
+ */
+export function readRecordedLaunches(controlDir: string): RecordedLaunch[] {
     if (controlDir === '') {
         return [];
     }
-    const historicalPids: number[] = [];
     const currentPid = readPidFile(path.join(controlDir, 'server.pid'));
-
+    let lines: string[] = [];
     try {
-        const launches = fs.readFileSync(path.join(controlDir, 'launches.log'), 'utf8');
-        for (const line of launches.split(/\r?\n/)) {
-            const match = /^\s*(\d+)\b/.exec(line);
-            if (match !== null) {
-                const pid = Number.parseInt(match[1], 10);
-                if (Number.isSafeInteger(pid) && pid > 0) {
-                    historicalPids.push(pid);
-                }
-            }
-        }
+        lines = fs.readFileSync(path.join(controlDir, 'launches.log'), 'utf8').split(/\r?\n/);
     } catch {
         // The server may not have launched, or the fixture may already be
-        // partially cleaned up. The current PID was handled above.
+        // partially cleaned up. The current PID is still handled.
     }
-
-    return [...new Set([
-        ...(currentPid === null ? [] : [currentPid]),
-        ...historicalPids.reverse(),
-    ])];
+    const history = lines
+        .map((line) => /^\s*(\d+)\b\s*(\S*)/.exec(line))
+        .filter((match): match is RegExpExecArray => match !== null)
+        .map((match): RecordedLaunch => {
+            const startedAt = new Date(match[2]);
+            return {
+                pid: Number.parseInt(match[1], 10),
+                ...(Number.isNaN(startedAt.getTime()) ? {} : { startedAt }),
+            };
+        })
+        .filter((launch) => Number.isSafeInteger(launch.pid) && launch.pid > 0)
+        .reverse();
+    const current = currentPid === null
+        ? []
+        : [history.find((launch) => launch.pid === currentPid) ?? { pid: currentPid }];
+    return [...current, ...history]
+        .filter((launch, index, all) => all.findIndex((other) => other.pid === launch.pid) === index);
 }
 
 function readPidFile(filePath: string): number | null {

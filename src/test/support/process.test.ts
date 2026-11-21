@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
     isProcessAlive,
+    readRecordedLaunches,
     readRecordedPids,
     terminateProcessTree,
     terminateRecordedProcesses,
@@ -136,6 +137,17 @@ describe('process cleanup helpers', () => {
         expect(script).not.toContain('$args');
     });
 
+    it('only follows Windows children created after their parent or the recorded launch', () => {
+        // Boot-time csrss.exe/winlogon.exe keep a stale ParentProcessId that a
+        // later process can reuse; they must not become its descendants.
+        const script = windowsProcessTreeScript(4242, new Date('2026-01-01T00:01:00.000Z'));
+
+        expect(script).toContain('Select-Object ProcessId, ParentProcessId, CreationDate');
+        expect(script).toContain("[DateTime]::Parse('2026-01-01T00:00:30.000Z'");
+        expect(script).toContain('$created[$child] -lt $bound');
+        expect(windowsProcessTreeScript(4242)).toContain('$notBefore = $null;');
+    });
+
     it('returns the current PID first and historical launch PIDs newest first', () => {
         // Arrange
         const controlDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdlsupport-pids-test-'));
@@ -155,6 +167,29 @@ describe('process cleanup helpers', () => {
 
         // Assert
         expect(pids).toEqual([202, 303, 101]);
+    });
+
+    it('keeps each recorded launch time so cleanup can reject older processes', () => {
+        // Arrange
+        const controlDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdlsupport-launches-test-'));
+        temporaryDirectories.push(controlDir);
+        fs.writeFileSync(path.join(controlDir, 'server.pid'), '202\n');
+        fs.writeFileSync(
+            path.join(controlDir, 'launches.log'),
+            '101 2026-01-01T00:00:00.000Z\n'
+            + '202 2026-01-01T00:00:01.000Z\n'
+            + '404 launch\n',
+        );
+
+        // Act
+        const launches = readRecordedLaunches(controlDir);
+
+        // Assert
+        expect(launches).toEqual([
+            { pid: 202, startedAt: new Date('2026-01-01T00:00:01.000Z') },
+            { pid: 404 },
+            { pid: 101, startedAt: new Date('2026-01-01T00:00:00.000Z') },
+        ]);
     });
 
     it('ignores an absent control directory and malformed PID files', () => {
