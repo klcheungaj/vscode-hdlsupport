@@ -4,13 +4,13 @@ Building, testing, and packaging `hdl-support`. User documentation is in the [RE
 
 ## Build
 
-Requires Node.js 22.12+ (20.19+ for build and unit tests only), VS Code ^1.82.0, and `tar`.
+Requires Node.js 22.12+ (20.19+ for build and unit tests only), VS Code ^1.82.0, `tar`, and `unzip` (to package Windows targets on Linux or macOS).
 
 ```sh
 npm install
 npm run build             # linter settings, syntaxes, snippets
-npm run stage:server      # download llg_ls → server/linux-x64/
-npm run stage:softbrush   # download softbrush_ls → server/linux-x64/
+npm run stage:server      # download llg_ls → server/<host-target>/
+npm run stage:softbrush   # download softbrush_ls → server/<host-target>/
 npm run compile           # bundle → dist/  (npm run watch for watch mode)
 npm run typecheck
 npm run lint
@@ -18,14 +18,26 @@ npm run lint
 
 Run the extension with `code --extensionDevelopmentPath="$PWD"` after `npm run compile`.
 
-Server versions are pinned in `scripts/stage-server.ts` and `scripts/stage-softbrush.ts`. To upgrade, update `tag`, `asset`, and `sha256` there.
+Server versions are pinned in `scripts/stage-server.ts` and `scripts/stage-softbrush.ts`. To upgrade, update `tag` and every target's `asset` and `sha256` there.
 
 ## Package
+
+Each VSIX is platform-specific and bundles both servers for one VS Code
+target: `linux-x64`, `linux-arm64`, `darwin-arm64`, `win32-x64`, or
+`win32-arm64`. Stage scripts take `-- --target <target>` (default: the host's
+target, e.g. `darwin-arm64` on Apple silicon).
 
 ```sh
 npm run package:linux-x64                          # → hdl-support-linux-x64.vsix
 code --install-extension hdl-support-linux-x64.vsix
+npm run package:target -- --target win32-x64       # → hdl-support-win32-x64.vsix
+HDLSUPPORT_PACKAGE_TARGET=win32-x64 npm run test:package
 ```
+
+Staging a target deletes the other `server/<target>/` directories so a package
+bundles exactly one platform. The contract and end-to-end suites use the
+host's servers, so restage them (`npm run stage:server && npm run
+stage:softbrush`) after packaging another target.
 
 Releases: see [doc/releasing.md](releasing.md).
 

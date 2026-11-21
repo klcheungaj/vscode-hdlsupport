@@ -32,7 +32,9 @@ Source map and architecture for `src/`. Repo-wide rules are in the root
   real-server contracts, the Mocha VS Code host (`e2e/clientHost`) and
   Playwright (`e2e/playwright`) suites.
 - `../scripts/`: `stage-*.ts` download pinned server releases into
-  `server/linux-x64/`; `sync-tool-profiles.ts` generates linter and formatter settings.
+  `server/<target>/` (`--target`, default the host's target); `package-target.ts`
+  stages both and builds `hdl-support-<target>.vsix`; `sync-tool-profiles.ts`
+  generates linter and formatter settings.
 
 ## Architecture Invariants
 

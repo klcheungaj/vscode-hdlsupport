@@ -31,8 +31,9 @@ Syntax highlighting and snippets.
 
 ## Getting Started
 
-Language servers are bundled for Linux x64. On other platforms, set
-`hdlsupport.llg.path` and `hdlsupport.softbrush.path`.
+Language servers are bundled in the platform-specific packages for Linux
+(x64, arm64), macOS (Apple silicon), and Windows (x64, arm64). On other
+platforms, set `hdlsupport.llg.path` and `hdlsupport.softbrush.path`.
 
 Add an `llg.toml` to describe your project (run
 **HDL Support: [Lapligence] Open Configuration (llg.toml)** to create one):

@@ -6,21 +6,34 @@ import * as os from 'os';
 import { assertExecutableLinkage } from '../support/executableLinkage';
 import { assertMimallocProtocolAllocations } from '../support/mimalloc';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { BUNDLED_TARGETS, bundledBinaryName, type BundledTarget } from '../../languageServer/resolve';
+
+function packageTarget(): BundledTarget {
+    const value = process.env.HDLSUPPORT_PACKAGE_TARGET ?? 'linux-x64';
+    const target = BUNDLED_TARGETS.find((candidate) => candidate === value);
+    if (target === undefined) {
+        throw new Error(`HDLSUPPORT_PACKAGE_TARGET must be one of ${BUNDLED_TARGETS.join(', ')}; got '${value}'`);
+    }
+    return target;
+}
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
-const VSIX_PATH = path.join(REPO_ROOT, 'hdl-support-linux-x64.vsix');
-const ARCHIVE_SERVER_ENTRIES = [
-    'extension/server/linux-x64/llg_ls',
-    'extension/server/linux-x64/softbrush_ls',
-] as const;
+const TARGET = packageTarget();
+const TARGET_PLATFORM = TARGET.split('-')[0];
+const IS_HOST_TARGET = TARGET === `${process.platform}-${process.arch}`;
+const VSIX_PATH = path.join(REPO_ROOT, `hdl-support-${TARGET}.vsix`);
+const SERVER_BINARIES = ['llg_ls', 'softbrush_ls'].map((binary) => bundledBinaryName(binary, TARGET_PLATFORM));
+const SERVER_PATHS = SERVER_BINARIES.map((binary) => `server/${TARGET}/${binary}`);
+const ARCHIVE_SERVER_ENTRIES = SERVER_PATHS.map((packagedPath) => `extension/${packagedPath}`);
 const VSCE_LIST_TIMEOUT_MS = 120_000;
 
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
 /**
- * Packaging contract: whatever ships in hdl-support-linux-x64.vsix must include
- * both bundled language servers and runtime assets, and must exclude sources,
- * build artifacts and legacy indexer leftovers.
+ * Packaging contract: whatever ships in hdl-support-<target>.vsix must include
+ * both language servers for that one target and the runtime assets, and must
+ * exclude sources, other targets' servers, build artifacts and legacy indexer
+ * leftovers. HDLSUPPORT_PACKAGE_TARGET selects the target (default linux-x64).
  */
 
 interface PackageListing {
@@ -112,7 +125,7 @@ function normalizeEntry(entry: string): string {
     return normalized;
 }
 
-describe('[packaging contract] hdl-support-linux-x64.vsix contents', () => {
+describe(`[packaging contract] hdl-support-${TARGET}.vsix contents`, () => {
     let extractedDirectory: string | undefined;
     const extractedServers = new Map<string, string>();
     let files: string[];
@@ -140,20 +153,31 @@ describe('[packaging contract] hdl-support-linux-x64.vsix contents', () => {
         }
     });
 
-    for (const name of ['llg_ls', 'softbrush_ls']) {
-        it(`ships a fully static Linux ${name}`, async () => {
-            await assertExecutableLinkage(extractedServers.get(name)!, 'linux');
+    for (const name of SERVER_BINARIES) {
+        // readelf inspects ELF files of any architecture; Mach-O and PE
+        // inspection needs the native host's object-file tools.
+        it.runIf(TARGET_PLATFORM === 'linux' || IS_HOST_TARGET)(`ships ${name} linked only against system libraries`, async () => {
+            await assertExecutableLinkage(extractedServers.get(name)!, TARGET_PLATFORM as NodeJS.Platform);
         });
 
-        it(`ships ${name} using mimalloc for default protocol allocations`, async () => {
+        it.runIf(TARGET_PLATFORM === 'linux' && IS_HOST_TARGET)(`ships ${name} using mimalloc for default protocol allocations`, async () => {
             await assertMimallocProtocolAllocations(extractedServers.get(name)!);
         });
     }
 
+    it('declares its target platform in the VSIX manifest', async () => {
+        const { stdout } = await promisify(execFile)('unzip', ['-p', VSIX_PATH, 'extension.vsixmanifest']);
+        expect(stdout).toContain(`TargetPlatform="${TARGET}"`);
+    });
+
+    it('bundles servers for its own target only', () => {
+        const otherServers = files.filter((file) => file.startsWith('server/') && !SERVER_PATHS.includes(file));
+        expect(otherServers).toEqual([]);
+    });
+
     it('ships the runtime assets required by both language servers', () => {
         for (const required of [
-            'server/linux-x64/llg_ls',
-            'server/linux-x64/softbrush_ls',
+            ...SERVER_PATHS,
             'dist/extension.js',
             'package.json',
             'doc/llg.example.toml',
@@ -194,9 +218,8 @@ describe('[packaging contract] hdl-support-linux-x64.vsix contents', () => {
         expect(offenders).toEqual([]);
     });
 
-    it('bundles executable-size linux-x64 server binary entries', () => {
-        for (const binary of ['llg_ls', 'softbrush_ls']) {
-            const packagedPath = `server/linux-x64/${binary}`;
+    it(`bundles executable-size ${TARGET} server binary entries`, () => {
+        for (const packagedPath of SERVER_PATHS) {
             expect(files).toContain(packagedPath);
 
             const archivePath = `extension/${packagedPath}`;

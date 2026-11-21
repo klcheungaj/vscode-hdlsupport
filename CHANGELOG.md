@@ -12,7 +12,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Real VS Code/Softbrush startup and diagnostic regression coverage.
 
 - Tcl, SDC, and XDC TextMate grammars and editor configurations, with Softbrush diagnostics, hover, completion, symbols, and semantic tokens. The SDC and XDC grammars extend the Tcl grammar, and all three color tokens the same way as Softbrush semantic tokens, so highlighting does not change when the server starts. Unknown constraint commands remain non-blocking hints.
-- Bundled Linux x64 Softbrush server, executable override, enable setting, restart/output commands, and `npm run stage:softbrush`.
+- Bundled Softbrush server, executable override, enable setting, restart/output commands, and `npm run stage:softbrush`.
+- Platform-specific VSIX packages with bundled `llg_ls` and `softbrush_ls` for linux-x64, linux-arm64, darwin-arm64, win32-x64, and win32-arm64 (`npm run package:target -- --target <target>`).
 
 - Lapligence (`llg`) language server integration (Surelog/UHDM-based) with diagnostics including built-in lint rules, hover, go-to-definition, find-references, symbol rename, document and workspace symbols, completion, semantic tokens, multi-root workspace support, and unsaved-buffer awareness.
 - Editor-independent `llg.toml` v1 configuration (`schema_version = 1`) for source discovery, compile options (`top`, `include_dirs`, `defines`), and lint rules (`enabled`, `severity`).
