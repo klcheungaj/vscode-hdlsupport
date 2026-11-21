@@ -6,8 +6,10 @@ This project has three GitHub Actions workflows:
   pushes, pull requests, and manual runs.
 - `Dependency audit` (`.github/workflows/dependency-audit.yml`) audits npm
   dependencies on pushes, pull requests, manual runs, and a weekly schedule.
-- `Release Linux x64 VSIX` (`.github/workflows/release.yml`) verifies a release
-  candidate and publishes the supported Linux x64 package to GitHub Releases.
+- `Release VSIX packages` (`.github/workflows/release.yml`) verifies a release
+  candidate and publishes one platform-specific VSIX per supported target
+  (linux-x64, linux-arm64, darwin-arm64, win32-x64, win32-arm64) to GitHub
+  Releases.
 
 The release workflow does not publish to the Visual Studio Marketplace. No
 Marketplace token is required.
@@ -56,7 +58,7 @@ flowchart LR
     D --> F[Build static Linux x64 VSIX]
     E --> F
     F --> G[Dependency audit, static, unit, real-server, package, and GUI checks]
-    G --> H[Versioned VSIX and SHA-256 artifact]
+    G --> H[Package and contract-check the other four targets]
     H --> I[github-release environment approval]
     I --> J[Create tag if needed and publish GitHub Release]
 ```
@@ -72,6 +74,15 @@ The validation step requires all of the following:
 - If the tag already exists, it points to the exact commit being packaged.
 - Registry signatures verify and no advisory affects a runtime dependency
   (`npm audit signatures`, `npm audit --omit=dev`).
+
+The linux-x64 package gets the full real-server, package, and GUI
+verification. After it passes, a matrix job packages linux-arm64,
+darwin-arm64, win32-x64, and win32-arm64 on Linux from the same pinned,
+checksum-verified server releases and runs the package contract against each
+one: the archive contents, the `TargetPlatform` in its manifest, only that
+target's servers, and ELF static linkage for Linux targets. These servers are
+not executed in this workflow; each server repository's own CI runs them
+natively. Every VSIX is uploaded with a SHA-256 file.
 
 The build-and-verify job has read-only repository permission. The publish job
 is the only job with `contents: write`, and it is attached to the
@@ -113,8 +124,8 @@ intended source changes. Push them through the normal review process
 and wait for CI to pass on the default branch.
 
 Lapligence and Softbrush ship from their own GitHub releases, with their own
-Rust CI and test policies. To move to a new server release, update `tag`,
-`asset`, and `sha256` together in the matching stage script (the checksum is
+Rust CI and test policies. To move to a new server release, update `tag` and
+every target's `asset` and `sha256` together in the matching stage script (the checksum is
 published next to each asset as `<asset>.sha256`) and verify that release's
 own CI was green. The extension release workflow exercises both downloaded
 binaries through the raw-stdio contracts and the packaged-archive contract; it
@@ -143,14 +154,15 @@ HDLSUPPORT_E2E_DISABLE_GPU=1 xvfb-run -a npm run test:e2e:softbrush-host
 
 This is the recommended manual release path:
 
-1. Open **Actions → Release Linux x64 VSIX → Run workflow**.
+1. Open **Actions → Release VSIX packages → Run workflow**.
 2. Select the repository's default branch.
 3. Enter the exact package version without `v`, such as `0.2.1`.
 4. Select **prerelease** only for a prerelease.
 5. Start the workflow and, if configured, approve the `github-release`
    environment after the build-and-verify job succeeds.
-6. Confirm that the resulting `v0.2.1` GitHub Release contains both
-   `hdl-support-0.2.1-linux-x64.vsix` and its `.sha256` file.
+6. Confirm that the resulting `v0.2.1` GitHub Release contains
+   `hdl-support-0.2.1-<target>.vsix` and its `.sha256` file for each of
+   linux-x64, linux-arm64, darwin-arm64, win32-x64, and win32-arm64.
 
 The workflow creates the `v0.2.1` tag at the exact verified commit when the tag
 does not already exist.
@@ -188,8 +200,8 @@ Download and verify the published files:
 mkdir hdl-support-0.2.1-release
 cd hdl-support-0.2.1-release
 gh release download v0.2.1 --repo <owner>/<repository>
-sha256sum --check hdl-support-0.2.1-linux-x64.vsix.sha256
-code --install-extension hdl-support-0.2.1-linux-x64.vsix
+sha256sum --check hdl-support-0.2.1-*.vsix.sha256
+code --install-extension hdl-support-0.2.1-linux-x64.vsix   # pick your platform's file
 ```
 
 If verification fails before publishing, fix the source or metadata on the
