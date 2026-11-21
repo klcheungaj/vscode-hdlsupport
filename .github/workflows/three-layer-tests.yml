@@ -152,18 +152,24 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Stage the ${{ matrix.target }} servers
+        id: stage
         shell: bash
         run: |
           npm run stage:server -- --target "${{ matrix.target }}"
           npm run stage:softbrush -- --target "${{ matrix.target }}"
       - name: Run raw-stdio contracts against the real servers
+        # Run every suite once the servers are staged, so one CI run reports
+        # all failing layers instead of stopping at the first.
+        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
         shell: bash
         run: REQUIRE_LLG=1 REQUIRE_SOFTBRUSH=1 npm run test:contract
       - name: Verify real llg diagnostics in VS Code
+        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e:real-server-host; else npm run test:e2e:real-server-host; fi
       - name: Verify real Softbrush diagnostics in VS Code
+        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e:softbrush-host; else npm run test:e2e:softbrush-host; fi
