@@ -5,9 +5,9 @@ This project has two GitHub Actions workflows:
 - `Continuous integration` (`.github/workflows/three-layer-tests.yml`) validates
   pushes, pull requests, and manual runs, and builds and tests one VSIX per
   supported target (linux-x64, linux-arm64, darwin-arm64, win32-x64,
-  win32-arm64). On a `vX.Y.Z` tag push, or a manual run with a release
-  version, its final job publishes those same tested VSIXes as a GitHub
-  Release. Releasing never rebuilds or retests anything.
+  win32-arm64). When a GitHub Release is published from the web UI, it runs
+  on the release's tag and its final job attaches the VSIXes that same run
+  built and tested to that release.
 - `Dependency audit` (`.github/workflows/dependency-audit.yml`) audits npm
   dependencies on pushes, pull requests, manual runs, and a weekly schedule.
 
@@ -25,7 +25,7 @@ cancels the older run; release runs are never cancelled.
 | GUI | Linux, Windows, macOS; VS Code 1.82.3 and stable | Playwright workbench journey and `@vscode/test-electron` extension-host suite; failed-run logs and reports are uploaded |
 | Real servers and VSIX | linux-x64, linux-arm64, darwin-arm64, win32-x64, win32-arm64 (native runners) | Builds the runner's platform VSIX from pinned, checksum-verified `llg_ls` and `softbrush_ls` release downloads and unpacks it; then runs the archive contract (Linux and macOS), raw-stdio contracts against the packaged servers, and real VS Code/llg diagnostics (folder and standalone windows) and Softbrush startup/diagnostics with VS Code loading the unpacked VSIX; uploads each VSIX with a SHA-256 file |
 | Package contract (Windows) | Linux | Downloads the tested win32-x64 and win32-arm64 VSIXes and runs the archive contract that Windows runners cannot (no `unzip`/`zipinfo`) |
-| Validate release, Publish | Linux; release runs only | See [Release flow](#release-flow) |
+| Validate release, Attach VSIXes | Linux; release runs only | See [Release flow](#release-flow) |
 
 The real-server job does not build either server. `npm run stage:server`
 and `npm run stage:softbrush` download the runner's target assets of the
@@ -58,52 +58,45 @@ test it like any other dependency bump.
 
 ## Release flow
 
+Releases are always created by hand in the GitHub web UI. The workflow never
+creates releases or tags; it only tests the release's commit and attaches the
+packages.
+
 ```mermaid
 flowchart LR
-    A[Prepare version] --> B[Merge to default branch]
-    B --> C{Start release}
-    C -->|Run CI workflow with release_version| D[Validate default-branch HEAD]
-    C -->|Push vX.Y.Z tag| E[Validate tag and branch ancestry]
-    D --> F[All CI jobs pass in the same run]
-    E --> F
-    F --> G[github-release environment approval]
-    G --> H[Rename tested VSIXes, create tag if needed, publish GitHub Release]
+    A[Bump version on default branch] --> B[Publish release in web UI]
+    B --> C[CI runs on the release tag]
+    C --> D[Validate release + all CI jobs pass]
+    D --> E[Attach the five tested VSIXes and checksums]
 ```
 
 The `Validate release` job runs in parallel with the test jobs and requires
 all of the following:
 
-- The version is valid semantic versioning and matches both `package.json` and
-  `package-lock.json`.
-- A manual run targets the current default-branch head.
-- A pushed tag points to a commit contained in the default branch.
-- If the tag already exists, it points to the exact commit being packaged.
+- The release tag is `v<version>`, the version is valid semantic versioning,
+  and it matches both `package.json` and `package-lock.json`.
+- The tag points to a commit contained in the default branch.
 - Registry signatures verify and no advisory affects a runtime dependency
   (`npm audit signatures`, `npm audit --omit=dev`).
 
-`Publish GitHub Release` needs every other job in the run, so nothing is
-published unless quality, GUI, real-server, and package checks all pass on
+`Attach VSIXes to the release` needs every other job in the run, so nothing is
+attached unless quality, GUI, real-server, and package checks all pass on
 every platform. It downloads the run's `vsix-<target>` artifacts, verifies
 their checksums, renames them to the `<os>-<arch>` names of the Lapligence and
 Softbrush release archives (`hdl-support-<version>-linux-x86_64.vsix`,
 `-linux-arm64`, `-macos-arm64`, `-windows-x86_64`, `-windows-arm64`), and
-writes a SHA-256 file for each.
+uploads each with a SHA-256 file. Re-running the job replaces those files.
 
-Every other job has read-only repository permission. The publish job is the
-only job with `contents: write`, and it is attached to the `github-release`
-deployment environment. An existing GitHub Release is never overwritten.
+Every other job has read-only repository permission; only the attach job has
+`contents: write`.
 
 ## One-time repository setup
 
 1. Enable GitHub Actions for the repository.
-2. In **Settings → Environments**, create an environment named
-   `github-release`. Adding required reviewers is strongly recommended. If
-   deployment branch/tag restrictions are enabled, allow the default branch
-   and release tags matching `v*`.
-3. Ensure repository or organization policy permits the CI workflow's
+2. Ensure repository or organization policy permits the CI workflow's
    `GITHUB_TOKEN` to request `contents: write`. No personal access token or
-   repository secret is needed for GitHub Releases.
-4. Optionally add branch protection or a ruleset requiring the
+   repository secret is needed.
+3. Optionally add branch protection or a ruleset requiring the
    `Continuous integration` checks before changes reach the default branch.
 
 ## Prepare a version
@@ -118,10 +111,9 @@ npm version 0.2.1 --no-git-tag-version --allow-same-version
 ```
 
 Review and commit `package.json`, `package-lock.json`, and any intended source
-changes. Release notes are generated by GitHub from merged pull requests
-(`--generate-notes`, configured in `.github/release.yml`); there is no
-`CHANGELOG.md`. Push them through the normal review process
-and wait for CI to pass on the default branch.
+changes. Push them through the normal review process and wait for CI to pass
+on the default branch. There is no `CHANGELOG.md`; release notes are written
+in the web UI.
 
 Lapligence and Softbrush ship from their own GitHub releases, with their own
 Rust CI and test policies. To move to a new server release, update `tag` and
@@ -150,51 +142,22 @@ HDLSUPPORT_E2E_DISABLE_GPU=1 xvfb-run -a npm run test:e2e:real-server-host
 HDLSUPPORT_E2E_DISABLE_GPU=1 xvfb-run -a npm run test:e2e:softbrush-host
 ```
 
-## Publish manually from the GitHub UI
+## Publish a release
 
-This is the recommended manual release path:
+1. Open **Releases → Draft a new release**.
+2. Choose a new tag `v0.2.1` (matching `package.json`) targeting the default
+   branch.
+3. Write the notes, or use **Generate release notes** to list merged pull
+   requests grouped by label (`.github/release.yml`).
+4. Tick **Set as a pre-release** if needed, then **Publish release**. A saved
+   draft does not start CI; only publishing does.
+5. Wait for the `Continuous integration` run on `v0.2.1`. When it passes, the
+   release gains `hdl-support-0.2.1-<os>-<arch>.vsix` and its `.sha256` file
+   for each of `linux-x86_64`, `linux-arm64`, `macos-arm64`, `windows-x86_64`,
+   and `windows-arm64`.
 
-1. Open **Actions → Continuous integration → Run workflow**.
-2. Select the repository's default branch.
-3. Enter the exact package version without `v` as **release_version**, such as
-   `0.2.1`. Leaving it empty runs CI without releasing.
-4. Select **prerelease** only for a prerelease.
-5. Start the workflow and, if configured, approve the `github-release`
-   environment once every other job has passed.
-6. Confirm that the resulting `v0.2.1` GitHub Release contains
-   `hdl-support-0.2.1-<os>-<arch>.vsix` and its `.sha256` file for each of
-   `linux-x86_64`, `linux-arm64`, `macos-arm64`, `windows-x86_64`, and
-   `windows-arm64`. Release files use the `<os>-<arch>` names of the
-   Lapligence and Softbrush release archives; locally built packages keep the
-   VS Code target name (`hdl-support-<target>.vsix`).
-
-The publish job creates the `v0.2.1` tag at the exact tested commit when the
-tag does not already exist.
-
-The equivalent GitHub CLI commands are:
-
-```sh
-gh workflow run three-layer-tests.yml --ref <default-branch> \
-  -f release_version=0.2.1 \
-  -f prerelease=false
-gh run list --workflow three-layer-tests.yml --limit 1
-gh run watch <run-id>
-```
-
-## Alternative: release by pushing a tag
-
-After the version commit is on the default branch, an annotated tag starts a
-CI run that releases once it passes:
-
-```sh
-git switch <default-branch>
-git pull --ff-only
-git tag -a v0.2.1 -m "HDL-Support 0.2.1"
-git push origin v0.2.1
-```
-
-A SemVer prerelease tag such as `v0.3.0-rc.1` is automatically published as a
-GitHub prerelease. Do not also start a manual workflow for the same version.
+Until that run finishes (or if it fails) the release has no VSIX files.
+Locally built packages keep the VS Code target name (`hdl-support-<target>.vsix`).
 
 ## Verify or recover a release
 
@@ -208,9 +171,8 @@ sha256sum --check hdl-support-0.2.1-*.vsix.sha256
 code --install-extension hdl-support-0.2.1-linux-x86_64.vsix   # pick your platform's file
 ```
 
-If a release run fails before publishing, fix the source or metadata on the
-default branch and start a new manual run. If a tag-triggered run fails, delete
-or move a published remote tag only after confirming that nobody relies on it;
-otherwise prepare a new patch version. If publishing fails after the tag is
-created, inspect the failed job before retrying—the workflow deliberately
-refuses to replace an existing release.
+If a test job failed for a transient reason, use **Re-run failed jobs** on the
+release's run; the attach job runs once everything passes. If the release
+itself is wrong (version mismatch, broken commit), delete the release and its
+tag only after confirming nobody relies on them, fix the default branch, and
+publish again, or prepare a new patch version.
