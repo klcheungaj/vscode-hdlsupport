@@ -166,17 +166,25 @@ jobs:
       - name: Build the static Linux x64 VSIX
         run: npm run package:linux-x64
 
-      - name: Verify the real server and packaged archive
+      # The real-server suites run against the unpacked VSIX (production
+      # bundle and packaged servers), i.e. exactly what is published.
+      - name: Unpack the VSIX as the extension under test
+        run: |
+          dir="$RUNNER_TEMP/hdl-vsix"
+          rm -rf "$dir" && mkdir -p "$dir"
+          unzip -q hdl-support-linux-x64.vsix -d "$dir"
+          test -f "$dir/extension/dist/extension.js"
+          echo "HDLSUPPORT_E2E_EXTENSION_PATH=$dir/extension" >> "$GITHUB_ENV"
+
+      - name: Verify the packaged servers and archive
         run: |
           REQUIRE_LLG=1 REQUIRE_SOFTBRUSH=1 npm run test:contract
           npm run test:package
 
-      - name: Verify real llg diagnostics in VS Code
+      - name: Verify real llg diagnostics in VS Code from the VSIX
         run: xvfb-run -a npm run test:e2e:real-server-host
 
-      - name: Verify real Softbrush diagnostics in VS Code
-        env:
-          HDLSUPPORT_E2E_DISABLE_GPU: '1'
+      - name: Verify real Softbrush diagnostics in VS Code from the VSIX
         run: xvfb-run -a npm run test:e2e:softbrush-host
 
       - name: Run Playwright workbench tests

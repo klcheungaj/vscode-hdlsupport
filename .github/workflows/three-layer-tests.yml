@@ -113,7 +113,7 @@ jobs:
         run: rm -rf playwright-report test-results ci-artifacts
 
   real-server-and-package:
-    name: Real servers (${{ matrix.target }})
+    name: Real servers and VSIX (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     strategy:
@@ -128,9 +128,11 @@ jobs:
     env:
       HDLSUPPORT_E2E_DISABLE_GPU: '1'
       HDLSUPPORT_E2E_VSCODE_VERSION: stable
+      VSIX: hdl-support-${{ matrix.target }}.vsix
     steps:
-      # Servers are downloaded from pinned, checksum-verified GitHub releases
-      # by the stage scripts, for the runner's own target.
+      # Each runner builds its own platform's VSIX (servers come from the
+      # pinned, checksum-verified GitHub releases) and every real-server
+      # suite then runs against the unpacked VSIX, i.e. what users install.
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -151,47 +153,58 @@ jobs:
           sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
       - run: npm ci
       - run: npm run build
-      - name: Stage the ${{ matrix.target }} servers
-        id: stage
+      - name: Build the ${{ matrix.target }} VSIX
+        run: npm run package:target -- --target "${{ matrix.target }}"
+      - name: Unpack the VSIX as the extension under test
+        id: unpack
         shell: bash
         run: |
-          npm run stage:server -- --target "${{ matrix.target }}"
-          npm run stage:softbrush -- --target "${{ matrix.target }}"
-      - name: Run raw-stdio contracts against the real servers
-        # Run every suite once the servers are staged, so one CI run reports
-        # all failing layers instead of stopping at the first.
-        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
+          dir="$RUNNER_TEMP/hdl-vsix"
+          rm -rf "$dir" && mkdir -p "$dir"
+          if [ "$RUNNER_OS" = Windows ]; then
+            # Windows' bsdtar reads zip archives; Git Bash's GNU tar does not.
+            /c/Windows/System32/tar.exe -xf "$VSIX" -C "$dir"
+          else
+            unzip -q "$VSIX" -d "$dir"
+          fi
+          test -f "$dir/extension/package.json"
+          test -f "$dir/extension/dist/extension.js"
+          echo "HDLSUPPORT_E2E_EXTENSION_PATH=$dir/extension" >> "$GITHUB_ENV"
+      # The archive contract needs unzip/zipinfo; the release workflow also
+      # checks the Windows archives on Linux.
+      - name: Verify the packaged archive
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' && runner.os != 'Windows' }}
+        env:
+          HDLSUPPORT_PACKAGE_TARGET: ${{ matrix.target }}
+        run: npm run test:package
+      # Run every suite once the VSIX is unpacked, so one CI run reports all
+      # failing layers instead of stopping at the first.
+      - name: Run raw-stdio contracts against the packaged servers
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
         shell: bash
         run: REQUIRE_LLG=1 REQUIRE_SOFTBRUSH=1 npm run test:contract
-      - name: Verify real llg diagnostics in VS Code
-        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
+      - name: Verify real llg diagnostics in VS Code from the VSIX
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e:real-server-host; else npm run test:e2e:real-server-host; fi
-      - name: Verify real Softbrush diagnostics in VS Code
-        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
+      - name: Verify real Softbrush diagnostics in VS Code from the VSIX
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e:softbrush-host; else npm run test:e2e:softbrush-host; fi
 
-      # Archive validation (static linkage, mimalloc) stays on linux-x64; the
-      # release workflow checks the other targets' archives.
-      - name: Build and verify the Linux x64 VSIX
-        if: matrix.target == 'linux-x64'
-        run: |
-          npm run package:linux-x64
-          npm run test:package
       - name: Create package checksum
-        if: matrix.target == 'linux-x64'
-        run: sha256sum hdl-support-linux-x64.vsix > hdl-support-linux-x64.vsix.sha256
-      - name: Upload Linux contract artifacts
-        if: matrix.target == 'linux-x64'
+        shell: bash
+        run: |
+          if command -v sha256sum >/dev/null; then sha256sum "$VSIX"; else shasum -a 256 "$VSIX"; fi > "$VSIX.sha256"
+      - name: Upload the verified VSIX
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: linux-package-contract
+          name: vsix-${{ matrix.target }}
           path: |
-            hdl-support-linux-x64.vsix
-            hdl-support-linux-x64.vsix.sha256
+            ${{ env.VSIX }}
+            ${{ env.VSIX }}.sha256
           if-no-files-found: error
           retention-days: 14
           compression-level: 0

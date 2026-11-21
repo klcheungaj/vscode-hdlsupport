@@ -23,13 +23,20 @@ request cancels the older run.
 | --- | --- | --- |
 | Quality | Linux, Windows, macOS | npm clean install, ESLint, TypeScript, Vitest unit tests; Linux also regenerates grammars/snippets and rejects drift |
 | GUI | Linux, Windows, macOS; VS Code 1.82.3 and stable | Playwright workbench journey and `@vscode/test-electron` extension-host suite; failed-run logs and reports are uploaded |
-| Real servers | linux-x64, linux-arm64, darwin-arm64, win32-x64, win32-arm64 (native runners) | Pinned, checksum-verified `llg_ls` and `softbrush_ls` release downloads for the runner's target, raw-stdio contracts, real VS Code/llg diagnostics in folder and standalone windows, real Softbrush startup/diagnostics; linux-x64 also builds the VSIX, validates the archive including static linkage/mimalloc, and uploads it with a SHA-256 file |
+| Real servers and VSIX | linux-x64, linux-arm64, darwin-arm64, win32-x64, win32-arm64 (native runners) | Builds the runner's platform VSIX from pinned, checksum-verified `llg_ls` and `softbrush_ls` release downloads and unpacks it; then runs the archive contract (Linux and macOS), raw-stdio contracts against the packaged servers, and real VS Code/llg diagnostics (folder and standalone windows) and Softbrush startup/diagnostics with VS Code loading the unpacked VSIX; uploads each VSIX with a SHA-256 file |
 
 The real-server job does not build either server. `npm run stage:server`
 and `npm run stage:softbrush` download the runner's target assets of the
 Lapligence and Softbrush GitHub releases pinned in `scripts/stage-server.ts`
 and `scripts/stage-softbrush.ts`, and refuse any archive whose SHA-256 differs
 from the value pinned there.
+
+Real-server tests load the extension from the unpacked VSIX
+(`HDLSUPPORT_E2E_EXTENSION_PATH`), so they exercise the minified production
+bundle, the packaged file list, and the servers at their packaged paths. The
+GUI job still runs the checkout against the fake server, because it scripts
+server responses to cover client-only behavior. Each CI run's VSIXes can be
+downloaded from its `vsix-<target>` artifacts.
 
 ## Dependency audit
 
@@ -74,7 +81,7 @@ The validation step requires all of the following:
   (`npm audit signatures`, `npm audit --omit=dev`).
 
 The linux-x64 package gets the full real-server, package, and GUI
-verification. After it passes, a matrix job packages linux-arm64,
+verification, with the real-server suites loading the unpacked VSIX. After it passes, a matrix job packages linux-arm64,
 darwin-arm64, win32-x64, and win32-arm64 on Linux from the same pinned,
 checksum-verified server releases and runs the package contract against each
 one: the archive contents, the `TargetPlatform` in its manifest, only that
