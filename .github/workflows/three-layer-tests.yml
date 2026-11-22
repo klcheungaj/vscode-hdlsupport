@@ -2,7 +2,8 @@ name: Continuous integration
 
 # Releases are created by hand in the GitHub web UI. Publishing one runs this
 # workflow on the release's tag and, once every other job has passed, attaches
-# the VSIXes this same run built and tested. See doc/releasing.md.
+# the VSIXes this same run built and tested, then publishes those attached
+# files to the Visual Studio Marketplace. See doc/releasing.md.
 on:
   push:
     # Tag pushes are left to the `release` trigger, so a release tag is
@@ -368,3 +369,57 @@ jobs:
           done
           gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
           echo "Attached VSIXes to [$RELEASE_TAG]($(gh release view "$RELEASE_TAG" --json url --jq .url))" >> "$GITHUB_STEP_SUMMARY"
+
+  # The last job: runs only after every job above passed and the VSIXes are
+  # attached, and publishes the release page's files themselves. GitHub
+  # pre-releases are not published. Authenticates with Marketplace Trusted
+  # Publishing (GitHub OIDC), so no token is stored; the `marketplace`
+  # environment must match the publisher's Trusted Publishing policy.
+  marketplace:
+    name: Publish to the Visual Studio Marketplace
+    needs: [publish, release-metadata]
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: marketplace
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # Only the lockfile-pinned vsce is needed; install scripts are skipped.
+      - run: npm ci --ignore-scripts
+      - name: Download and verify the VSIXes attached to the release
+        shell: bash
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.release-metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir released
+          gh release download "$RELEASE_TAG" --dir released --pattern "hdl-support-${RELEASE_VERSION}-*.vsix*"
+          cd released
+          packages=()
+          for platform in linux-x86_64 linux-arm64 macos-arm64 windows-x86_64 windows-arm64; do
+            asset="hdl-support-${RELEASE_VERSION}-${platform}.vsix"
+            if [[ ! -f "$asset" || ! -f "${asset}.sha256" ]]; then
+              echo "release ${RELEASE_TAG} is missing ${asset} or its checksum" >&2
+              exit 1
+            fi
+            sha256sum --check "${asset}.sha256"
+            packages+=("released/${asset}")
+          done
+          echo "PACKAGES=${packages[*]}" >> "$GITHUB_ENV"
+      # --skip-duplicate lets a re-run finish targets a failed run left
+      # unpublished.
+      - name: Publish the VSIXes
+        shell: bash
+        run: npx vsce publish --oidc --skip-duplicate --packagePath $PACKAGES

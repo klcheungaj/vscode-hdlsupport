@@ -6,13 +6,16 @@ This project has two GitHub Actions workflows:
   pushes, pull requests, and manual runs, and builds and tests one VSIX per
   supported target (linux-x64, linux-arm64, darwin-arm64, win32-x64,
   win32-arm64). When a GitHub Release is published from the web UI, it runs
-  on the release's tag and its final job attaches the VSIXes that same run
-  built and tested to that release.
+  on the release's tag, attaches the VSIXes that same run built and tested to
+  that release, and, as its final job, publishes those attached VSIXes to the
+  Visual Studio Marketplace.
 - `Dependency audit` (`.github/workflows/dependency-audit.yml`) audits npm
   dependencies on pushes, pull requests, manual runs, and a weekly schedule.
 
-Releases are not published to the Visual Studio Marketplace. No Marketplace
-token is required.
+Marketplace publishing uses
+[Trusted Publishing](https://code.visualstudio.com/api/working-with-extensions/publishing-extension):
+the job exchanges a short-lived GitHub OIDC token for a Marketplace credential,
+so no Marketplace token or repository secret is stored.
 
 ## Continuous integration flow
 
@@ -25,7 +28,7 @@ cancels the older run; release runs are never cancelled.
 | GUI | Linux, Windows, macOS; VS Code 1.82.3 and stable | Playwright workbench journey and `@vscode/test-electron` extension-host suite; failed-run logs and reports are uploaded |
 | Real servers and VSIX | linux-x64, linux-arm64, darwin-arm64, win32-x64, win32-arm64 (native runners) | Builds the runner's platform VSIX from pinned, checksum-verified `llg_ls` and `softbrush_ls` release downloads and unpacks it; then runs the archive contract (Linux and macOS), raw-stdio contracts against the packaged servers, and real VS Code/llg diagnostics (folder and standalone windows) and Softbrush startup/diagnostics with VS Code loading the unpacked VSIX; uploads each VSIX with a SHA-256 file |
 | Package contract (Windows) | Linux | Downloads the tested win32-x64 and win32-arm64 VSIXes and runs the archive contract that Windows runners cannot (no `unzip`/`zipinfo`) |
-| Validate release, Attach VSIXes | Linux; release runs only | See [Release flow](#release-flow) |
+| Validate release, Attach VSIXes, Publish to the Visual Studio Marketplace | Linux; release runs only | See [Release flow](#release-flow) |
 
 The real-server job does not build either server. `npm run stage:server`
 and `npm run stage:softbrush` download the runner's target assets of the
@@ -68,6 +71,8 @@ flowchart LR
     B --> C[CI runs on the release tag]
     C --> D[Validate release + all CI jobs pass]
     D --> E[Attach the five tested VSIXes and checksums]
+    E --> F{Pre-release?}
+    F -- no --> G[Publish the attached VSIXes to the Marketplace]
 ```
 
 The `Validate release` job runs in parallel with the test jobs and requires
@@ -88,17 +93,40 @@ the Lapligence and Softbrush release archives
 (`hdl-support-<version>-linux-x86_64.vsix`, `-linux-arm64`, `-macos-arm64`,
 `-windows-x86_64`, `-windows-arm64`). Re-running the job replaces those files.
 
+`Publish to the Visual Studio Marketplace` is the last job. It needs the
+attach job, so it runs only when every other job passed and all files are on
+the release page. It is skipped for releases marked **Set as a pre-release**.
+It downloads the VSIXes from the release page (not from the run's artifacts),
+verifies their checksums, and runs the lockfile-pinned
+`vsce publish --oidc --skip-duplicate --packagePath <five VSIXes>`. Each VSIX
+already carries its VS Code target, so the Marketplace serves it as that
+platform's package. It runs in the `marketplace` GitHub environment with
+`id-token: write`. If it fails after some targets were published,
+**Re-run failed jobs** publishes the rest and skips those already published.
+
 Every other job has read-only repository permission; only the attach job has
-`contents: write`.
+`contents: write`, and only the Marketplace job has `id-token: write`.
 
 ## One-time repository setup
 
 1. Enable GitHub Actions for the repository.
 2. Ensure repository or organization policy permits the CI workflow's
-   `GITHUB_TOKEN` to request `contents: write`. No personal access token or
-   repository secret is needed.
-3. Optionally add branch protection or a ruleset requiring the
-   `Continuous integration` checks before changes reach the default branch.
+   `GITHUB_TOKEN` to request `contents: write` and `id-token: write`. No
+   personal access token or repository secret is needed.
+3. Create the `marketplace` environment (**Settings → Environments**). Under
+   **Deployment branches and tags** choose **Selected branches and tags** and
+   add a **Tag** rule `v*` (release runs run on the tag, so "Protected branches
+   only" would reject them). Optionally add yourself as a required reviewer to
+   approve each Marketplace publish. Add no environment secret.
+4. Sign in at <https://marketplace.visualstudio.com/manage> and create the
+   publisher named in `package.json` (`publisher`). Open it, then
+   **Trusted Publishing → Create** a policy with repository owner and name of
+   this repository, workflow `three-layer-tests.yml`, and environment
+   `marketplace`. For a private repository, publish a release within 48 hours
+   of creating the policy; the first successful use activates it.
+5. Optionally add branch protection or a ruleset requiring the
+   `Continuous integration` checks before changes reach the default branch,
+   and a tag ruleset restricting who may create `v*` tags.
 
 ## Prepare a version
 
@@ -155,9 +183,12 @@ HDLSUPPORT_E2E_DISABLE_GPU=1 xvfb-run -a npm run test:e2e:softbrush-host
 5. Wait for the `Continuous integration` run on `v0.2.1`. When it passes, the
    release gains `hdl-support-0.2.1-<os>-<arch>.vsix` and its `.sha256` file
    for each of `linux-x86_64`, `linux-arm64`, `macos-arm64`, `windows-x86_64`,
-   and `windows-arm64`.
+   and `windows-arm64`. Unless it is a pre-release, the same files are then
+   published to the Visual Studio Marketplace (after your approval, if the
+   `marketplace` environment requires a reviewer).
 
-Until that run finishes (or if it fails) the release has no VSIX files.
+Until that run finishes (or if it fails) the release has no VSIX files and
+nothing is published to the Marketplace.
 
 ## Verify or recover a release
 
@@ -175,4 +206,5 @@ If a test job failed for a transient reason, use **Re-run failed jobs** on the
 release's run; the attach job runs once everything passes. If the release
 itself is wrong (version mismatch, broken commit), delete the release and its
 tag only after confirming nobody relies on them, fix the default branch, and
-publish again, or prepare a new patch version.
+publish again, or prepare a new patch version. Once a version reached the
+Marketplace it cannot be replaced there; fix forward with a new patch version.
